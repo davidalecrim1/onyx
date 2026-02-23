@@ -290,7 +290,6 @@ git add .
 Show the user a summary of what was changed in this task, then stop and ask:
 
 > "Ready to commit. Please review the staged changes and type 'commit' to continue, or describe any changes you want made first."
-
 Do NOT proceed to the next task until the user confirms.
 
 ---
