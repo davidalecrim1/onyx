@@ -4,7 +4,7 @@ pub mod ui;
 use std::sync::Arc;
 use cosmic_text::{Attrs, Buffer as TextBuffer, FontSystem, Metrics, Style, SwashCache, Weight};
 use vello::kurbo::{Affine, Rect};
-use vello::peniko::{Brush, Color, Fill};
+use vello::peniko::{Blob, Brush, Color, Fill, ImageAlphaType, ImageData, ImageFormat};
 use vello::util::RenderContext;
 use vello::{AaConfig, RenderParams, Renderer as VelloRenderer, RendererOptions, Scene};
 use winit::window::Window;
@@ -271,6 +271,30 @@ impl Renderer {
                 }
             }
         }
+    }
+
+    /// Blits a single rasterized glyph into the scene at its physical screen position.
+    fn blit_glyph(&mut self, physical: &cosmic_text::PhysicalGlyph, fg: Color) {
+        let Some(swash_image) = self.swash_cache.get_image(&mut self.font_system, physical.cache_key) else {
+            return;
+        };
+        let width = swash_image.placement.width;
+        let height = swash_image.placement.height;
+        if width == 0 || height == 0 {
+            return;
+        }
+        let rgba = swash_to_rgba(swash_image, fg);
+        let blob = Blob::new(std::sync::Arc::new(rgba));
+        let image = ImageData {
+            data: blob,
+            format: ImageFormat::Rgba8,
+            alpha_type: ImageAlphaType::Alpha,
+            width,
+            height,
+        };
+        let glyph_x = (physical.x + swash_image.placement.left) as f64;
+        let glyph_y = (physical.y - swash_image.placement.top) as f64;
+        self.scene.draw_image(&image, Affine::translate((glyph_x, glyph_y)));
     }
 
     /// Submits the current scene to the GPU and presents the frame.
