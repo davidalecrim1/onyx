@@ -1,10 +1,12 @@
 use std::sync::Arc;
-use cosmic_text::{Attrs, Buffer as TextBuffer, FontSystem, Metrics, SwashCache};
+use cosmic_text::{Attrs, Buffer as TextBuffer, FontSystem, Metrics, Style, SwashCache, Weight};
 use vello::kurbo::{Affine, Rect};
 use vello::peniko::{Brush, Color, Fill};
 use vello::util::RenderContext;
 use vello::{AaConfig, RenderParams, Renderer as VelloRenderer, RendererOptions, Scene};
 use winit::window::Window;
+
+use crate::editor::{RenderLine, SpanStyle};
 
 pub struct Renderer {
     render_context: RenderContext,
@@ -54,7 +56,8 @@ impl Renderer {
             .resize_surface(&mut self.render_surface, new_size.width, new_size.height);
     }
 
-    /// Draws each buffer line and a cursor rectangle, then submits the scene to the GPU.
+    /// Draws each buffer line and a cursor rectangle; kept for raw-mode fallback.
+    #[allow(dead_code)]
     pub fn draw_buffer(&mut self, lines: &[String], cursor_line: usize, cursor_col: usize) {
         let metrics = Metrics::new(15.0, 22.0);
         let line_height = 22.0_f32;
@@ -103,6 +106,83 @@ impl Renderer {
         }
     }
 
+    /// Draws styled render lines from the editor layer and a cursor rectangle.
+    pub fn draw_render_lines(
+        &mut self,
+        render_lines: &[RenderLine],
+        cursor_line: usize,
+        cursor_col: usize,
+    ) {
+        let left_pad = 48.0_f32;
+        let top_pad = 8.0_f32;
+        let base_line_height = 22.0_f32;
+        let char_width = 9.0_f32;
+        let surface_width = self.render_surface.config.width as f32;
+
+        for (line_idx, render_line) in render_lines.iter().enumerate() {
+            let line_height = heading_line_height(&render_line.spans, base_line_height);
+            let y = top_pad + line_idx as f32 * base_line_height;
+
+            if render_line.spans.iter().any(|span| span.style == SpanStyle::CodeBlockText) {
+                let bg = Rect::new(
+                    left_pad as f64,
+                    y as f64,
+                    (surface_width - left_pad) as f64,
+                    (y + line_height) as f64,
+                );
+                self.scene.fill(
+                    Fill::NonZero,
+                    Affine::IDENTITY,
+                    &Brush::Solid(Color::from_rgba8(30, 30, 36, 255)),
+                    None,
+                    &bg,
+                );
+            }
+
+            if line_idx == cursor_line {
+                let cx = left_pad + cursor_col as f32 * char_width;
+                let cursor_rect = Rect::new(
+                    cx as f64,
+                    y as f64,
+                    (cx + char_width) as f64,
+                    (y + line_height) as f64,
+                );
+                self.scene.fill(
+                    Fill::NonZero,
+                    Affine::IDENTITY,
+                    &Brush::Solid(Color::from_rgba8(97, 175, 239, 180)),
+                    None,
+                    &cursor_rect,
+                );
+            }
+
+            let mut x = left_pad;
+            for span in &render_line.spans {
+                let font_size = span_font_size(&span.style);
+                let metrics = Metrics::new(font_size, line_height);
+                let mut text_buf = TextBuffer::new(&mut self.font_system, metrics);
+                text_buf.set_size(&mut self.font_system, Some(surface_width - x), None);
+                let attrs = span_attrs(&span.style);
+                text_buf.set_text(
+                    &mut self.font_system,
+                    &span.text,
+                    attrs,
+                    cosmic_text::Shaping::Advanced,
+                );
+                text_buf.shape_until_scroll(&mut self.font_system, false);
+
+                for run in text_buf.layout_runs() {
+                    for glyph in run.glyphs.iter() {
+                        let physical = glyph.physical((x, y), 1.0);
+                        // Rasterise via swash to warm the glyph cache; full blit in Milestone 5.
+                        let _ = self.swash_cache.get_image(&mut self.font_system, physical.cache_key);
+                        x += glyph.w;
+                    }
+                }
+            }
+        }
+    }
+
     /// Submits the current scene to the GPU and presents the frame.
     pub fn render(&mut self) {
         let frame = match self.render_surface.surface.get_current_texture() {
@@ -139,5 +219,33 @@ impl Renderer {
         );
         device_handle.queue.submit(Some(encoder.finish()));
         frame.present();
+    }
+}
+
+fn heading_line_height(spans: &[crate::editor::RenderSpan], base: f32) -> f32 {
+    match spans.first().map(|span| &span.style) {
+        Some(SpanStyle::Heading(1)) => base * 2.0,
+        Some(SpanStyle::Heading(2)) => base * 1.6,
+        Some(SpanStyle::Heading(3)) => base * 1.3,
+        _ => base,
+    }
+}
+
+fn span_font_size(style: &SpanStyle) -> f32 {
+    match style {
+        SpanStyle::Heading(1) => 30.0,
+        SpanStyle::Heading(2) => 24.0,
+        SpanStyle::Heading(3) => 20.0,
+        SpanStyle::Heading(_) => 16.0,
+        SpanStyle::Code | SpanStyle::CodeBlockText => 14.0,
+        _ => 15.0,
+    }
+}
+
+fn span_attrs(style: &SpanStyle) -> Attrs<'static> {
+    match style {
+        SpanStyle::Bold | SpanStyle::Heading(_) => Attrs::new().weight(Weight::BOLD),
+        SpanStyle::Italic => Attrs::new().style(Style::Italic),
+        _ => Attrs::new(),
     }
 }

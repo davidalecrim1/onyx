@@ -1,6 +1,7 @@
 mod app;
 mod buffer;
 mod editor;
+mod markdown;
 mod render;
 mod vim;
 

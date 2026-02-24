@@ -1,5 +1,80 @@
 use crate::buffer::Buffer;
+use crate::markdown::{Block, Document, Inline};
 use crate::vim::{BufferCommand, Key, Mode, VimEngine};
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ViewMode {
+    LivePreview,
+    Raw,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum SpanStyle {
+    Normal,
+    /// Heading level 1–6.
+    Heading(u8),
+    Bold,
+    Italic,
+    Code,
+    Link,
+    BulletMarker,
+    CodeBlockText,
+}
+
+#[derive(Debug, Clone)]
+pub struct RenderSpan {
+    pub text: String,
+    pub style: SpanStyle,
+    /// When true, render as plain syntax rather than styled output (cursor is inside construct).
+    pub is_raw: bool,
+}
+
+#[derive(Debug, Clone)]
+pub struct RenderLine {
+    pub spans: Vec<RenderSpan>,
+}
+
+pub struct Tab {
+    pub editor: Editor,
+    pub view_mode: ViewMode,
+    pub file_path: Option<std::path::PathBuf>,
+    pub document: Document,
+    dirty: bool,
+}
+
+impl Tab {
+    /// Creates a tab pre-loaded with the given text, starting in Live Preview mode.
+    pub fn new(text: &str) -> Self {
+        Tab {
+            document: Document::parse(text),
+            editor: Editor::new(text),
+            view_mode: ViewMode::LivePreview,
+            file_path: None,
+            dirty: false,
+        }
+    }
+
+    /// Marks the document as needing a re-parse on the next sync.
+    pub fn mark_dirty(&mut self) {
+        self.dirty = true;
+    }
+
+    /// Re-parses the document from the buffer only when the buffer has changed since last sync.
+    pub fn sync_document(&mut self) {
+        if self.dirty {
+            self.document = Document::parse(&self.editor.buffer_text());
+            self.dirty = false;
+        }
+    }
+
+    /// Toggles between Live Preview and Raw mode.
+    pub fn toggle_view_mode(&mut self) {
+        self.view_mode = match self.view_mode {
+            ViewMode::LivePreview => ViewMode::Raw,
+            ViewMode::Raw => ViewMode::LivePreview,
+        };
+    }
+}
 
 pub struct Editor {
     pub buffer: Buffer,
@@ -78,6 +153,77 @@ impl Editor {
         }
     }
 
+    /// Converts a Document AST into a flat list of styled lines the renderer consumes.
+    pub fn build_render_lines(&self, doc: &Document, mode: ViewMode) -> Vec<RenderLine> {
+        if mode == ViewMode::Raw {
+            return (0..self.buffer.line_count())
+                .map(|idx| RenderLine {
+                    spans: vec![RenderSpan {
+                        text: self.buffer.line(idx),
+                        style: SpanStyle::Normal,
+                        is_raw: true,
+                    }],
+                })
+                .collect();
+        }
+
+        let mut lines: Vec<RenderLine> = Vec::new();
+
+        for block in doc.blocks() {
+            match block {
+                Block::Heading { level, inlines } => {
+                    let text = inlines.iter().map(inline_text).collect::<String>();
+                    lines.push(RenderLine {
+                        spans: vec![RenderSpan { text, style: SpanStyle::Heading(*level), is_raw: false }],
+                    });
+                }
+                Block::Paragraph { inlines } => {
+                    let spans = inlines.iter().map(|inline| {
+                        let (text, style) = inline_style(inline);
+                        RenderSpan { text, style, is_raw: false }
+                    }).collect();
+                    lines.push(RenderLine { spans });
+                }
+                Block::CodeBlock { code, .. } => {
+                    for code_line in code.lines() {
+                        lines.push(RenderLine {
+                            spans: vec![RenderSpan {
+                                text: code_line.to_string(),
+                                style: SpanStyle::CodeBlockText,
+                                is_raw: false,
+                            }],
+                        });
+                    }
+                }
+                Block::List(items) => {
+                    for item_inlines in items {
+                        let mut spans = vec![RenderSpan {
+                            text: "• ".to_string(),
+                            style: SpanStyle::BulletMarker,
+                            is_raw: false,
+                        }];
+                        for inline in item_inlines {
+                            let (text, style) = inline_style(inline);
+                            spans.push(RenderSpan { text, style, is_raw: false });
+                        }
+                        lines.push(RenderLine { spans });
+                    }
+                }
+                Block::ThematicBreak => {
+                    lines.push(RenderLine {
+                        spans: vec![RenderSpan {
+                            text: "───────────────────".to_string(),
+                            style: SpanStyle::Normal,
+                            is_raw: false,
+                        }],
+                    });
+                }
+            }
+        }
+
+        lines
+    }
+
     /// Selects and removes the entire current line, then deletes the trailing newline.
     fn delete_line(&mut self) {
         self.buffer.move_line_start();
@@ -87,6 +233,23 @@ impl Editor {
         let text = self.buffer.delete_selection();
         self.vim.set_register(text);
         self.buffer.delete_char_at_cursor();
+    }
+}
+
+fn inline_text(inline: &Inline) -> String {
+    match inline {
+        Inline::Text(t) | Inline::Bold(t) | Inline::Italic(t) | Inline::Code(t) => t.clone(),
+        Inline::Link { text, .. } => text.clone(),
+    }
+}
+
+fn inline_style(inline: &Inline) -> (String, SpanStyle) {
+    match inline {
+        Inline::Text(t) => (t.clone(), SpanStyle::Normal),
+        Inline::Bold(t) => (t.clone(), SpanStyle::Bold),
+        Inline::Italic(t) => (t.clone(), SpanStyle::Italic),
+        Inline::Code(t) => (t.clone(), SpanStyle::Code),
+        Inline::Link { text, .. } => (text.clone(), SpanStyle::Link),
     }
 }
 

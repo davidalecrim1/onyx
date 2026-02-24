@@ -3,18 +3,19 @@ use winit::{
     application::ApplicationHandler,
     event::{ElementState, WindowEvent},
     event_loop::ActiveEventLoop,
-    keyboard::{Key as WKey, NamedKey},
+    keyboard::{Key as WKey, ModifiersState, NamedKey},
     window::{Window, WindowId},
 };
 
-use crate::editor::Editor;
+use crate::editor::Tab;
 use crate::render::Renderer;
 use crate::vim::Key;
 
 pub struct App {
     window: Option<Arc<Window>>,
     renderer: Option<Renderer>,
-    editor: Editor,
+    tab: Tab,
+    modifiers: ModifiersState,
 }
 
 impl App {
@@ -23,7 +24,8 @@ impl App {
         App {
             window: None,
             renderer: None,
-            editor: Editor::new("Hello, Onyx!\nStart typing..."),
+            tab: Tab::new("# Hello, Onyx!\n\nStart typing...\n\n- Item one\n- Item two\n"),
+            modifiers: ModifiersState::empty(),
         }
     }
 }
@@ -53,14 +55,19 @@ impl ApplicationHandler for App {
                     renderer.resize(size);
                 }
             }
+            WindowEvent::ModifiersChanged(state) => {
+                self.modifiers = state.state();
+            }
             WindowEvent::RedrawRequested => {
+                self.tab.sync_document();
                 if let Some(renderer) = &mut self.renderer {
                     renderer.scene.reset();
-                    let lines: Vec<String> = (0..self.editor.buffer.line_count())
-                        .map(|i| self.editor.buffer.line(i))
-                        .collect();
-                    let cursor = self.editor.buffer.cursor();
-                    renderer.draw_buffer(&lines, cursor.line, cursor.col);
+                    let render_lines = self.tab.editor.build_render_lines(
+                        &self.tab.document,
+                        self.tab.view_mode,
+                    );
+                    let cursor = self.tab.editor.buffer.cursor();
+                    renderer.draw_render_lines(&render_lines, cursor.line, cursor.col);
                     renderer.render();
                 }
                 if let Some(window) = &self.window {
@@ -68,23 +75,37 @@ impl ApplicationHandler for App {
                 }
             }
             WindowEvent::KeyboardInput { event, .. } => {
-                if event.state == ElementState::Pressed {
-                    let key = match &event.logical_key {
-                        WKey::Named(NamedKey::Escape)     => Some(Key::Escape),
-                        WKey::Named(NamedKey::Backspace)  => Some(Key::Backspace),
-                        WKey::Named(NamedKey::Enter)      => Some(Key::Enter),
-                        WKey::Named(NamedKey::ArrowLeft)  => Some(Key::Left),
-                        WKey::Named(NamedKey::ArrowRight) => Some(Key::Right),
-                        WKey::Named(NamedKey::ArrowUp)    => Some(Key::Up),
-                        WKey::Named(NamedKey::ArrowDown)  => Some(Key::Down),
-                        WKey::Character(s) => s.chars().next().map(Key::Char),
-                        _ => None,
-                    };
-                    if let Some(k) = key {
-                        self.editor.handle_key(k);
+                if event.state != ElementState::Pressed {
+                    return;
+                }
+
+                // ctrl+t toggles Live Preview / Raw mode for the active tab.
+                if let WKey::Character(ref s) = event.logical_key {
+                    if s == "t" && self.modifiers.control_key() {
+                        self.tab.toggle_view_mode();
                         if let Some(window) = &self.window {
                             window.request_redraw();
                         }
+                        return;
+                    }
+                }
+
+                let key = match &event.logical_key {
+                    WKey::Named(NamedKey::Escape)     => Some(Key::Escape),
+                    WKey::Named(NamedKey::Backspace)  => Some(Key::Backspace),
+                    WKey::Named(NamedKey::Enter)      => Some(Key::Enter),
+                    WKey::Named(NamedKey::ArrowLeft)  => Some(Key::Left),
+                    WKey::Named(NamedKey::ArrowRight) => Some(Key::Right),
+                    WKey::Named(NamedKey::ArrowUp)    => Some(Key::Up),
+                    WKey::Named(NamedKey::ArrowDown)  => Some(Key::Down),
+                    WKey::Character(s) => s.chars().next().map(Key::Char),
+                    _ => None,
+                };
+                if let Some(k) = key {
+                    self.tab.editor.handle_key(k);
+                    self.tab.mark_dirty();
+                    if let Some(window) = &self.window {
+                        window.request_redraw();
                     }
                 }
             }
