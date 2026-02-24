@@ -14,6 +14,7 @@ use crate::render::Renderer;
 use crate::shell::{
     CommandRegistry, EventBus, FileTree, GlobalConfig, KeyBindings, VaultConfig,
 };
+use crate::terminal::TerminalPane;
 use crate::vim::Key;
 
 enum AppState {
@@ -33,6 +34,9 @@ pub struct App {
     keybindings: KeyBindings,
     file_tree: Option<FileTree>,
     file_tree_visible: bool,
+    terminal_pane: Option<TerminalPane>,
+    terminal_visible: bool,
+    terminal_focused: bool,
 }
 
 impl App {
@@ -67,6 +71,8 @@ impl App {
         commands.register("pane.file_tree.toggle", || {});
         commands.register("pane.terminal.toggle", || {});
         commands.register("pane.terminal.focus", || {});
+        commands.register("terminal.new_tab", || {});
+        commands.register("terminal.close_tab", || {});
         commands.register("command_palette.open", || {});
 
         App {
@@ -81,6 +87,9 @@ impl App {
             keybindings: KeyBindings::load_for_platform(),
             file_tree: None,
             file_tree_visible: false,
+            terminal_pane: None,
+            terminal_visible: false,
+            terminal_focused: false,
         }
     }
 
@@ -100,6 +109,7 @@ impl App {
 
         self.tab = Tab::new(&initial_text);
         self.file_tree = Some(FileTree::new(&path));
+        self.terminal_pane = Some(TerminalPane::new(&path, 24, 80));
         self.state = AppState::Editor { vault_root: path, vault_config };
 
         if let Some(window) = &self.window {
@@ -142,6 +152,24 @@ impl App {
                 self.file_tree_visible = !self.file_tree_visible;
                 self.events.emit("pane.toggled", "file_tree");
             }
+            "pane.terminal.toggle" => {
+                self.terminal_visible = !self.terminal_visible;
+                self.events.emit("pane.toggled", "terminal");
+            }
+            "pane.terminal.focus" => {
+                self.terminal_visible = true;
+                self.terminal_focused = true;
+            }
+            "terminal.new_tab" => {
+                if let Some(tp) = &mut self.terminal_pane {
+                    tp.new_tab();
+                }
+            }
+            "terminal.close_tab" => {
+                if let Some(tp) = &mut self.terminal_pane {
+                    tp.close_tab();
+                }
+            }
             "command_palette.open" => {
                 eprintln!("[command palette] TODO");
             }
@@ -152,6 +180,36 @@ impl App {
         if let Some(window) = &self.window {
             window.request_redraw();
         }
+    }
+}
+
+/// Returns the current system clipboard text, if accessible.
+fn get_clipboard() -> Option<String> {
+    arboard::Clipboard::new().ok()?.get_text().ok()
+}
+
+/// Converts a winit key event into the byte sequence the pty expects.
+fn key_to_bytes(key: &WKey, modifiers: &ModifiersState) -> Vec<u8> {
+    match key {
+        WKey::Character(s) => {
+            if modifiers.control_key() {
+                if let Some(c) = s.chars().next() {
+                    let lower = c.to_ascii_lowercase();
+                    if lower >= 'a' && lower <= 'z' {
+                        return vec![lower as u8 - b'a' + 1];
+                    }
+                }
+            }
+            s.as_bytes().to_vec()
+        }
+        WKey::Named(NamedKey::Enter)      => vec![b'\r'],
+        WKey::Named(NamedKey::Backspace)  => vec![127],
+        WKey::Named(NamedKey::Escape)     => vec![27],
+        WKey::Named(NamedKey::ArrowUp)    => vec![27, b'[', b'A'],
+        WKey::Named(NamedKey::ArrowDown)  => vec![27, b'[', b'B'],
+        WKey::Named(NamedKey::ArrowRight) => vec![27, b'[', b'C'],
+        WKey::Named(NamedKey::ArrowLeft)  => vec![27, b'[', b'D'],
+        _ => vec![],
     }
 }
 
@@ -201,6 +259,10 @@ impl ApplicationHandler for App {
                 self.modifiers = state.state();
             }
             WindowEvent::RedrawRequested => {
+                if let Some(tp) = &mut self.terminal_pane {
+                    tp.tick_all();
+                }
+
                 if let Some(renderer) = &mut self.renderer {
                     renderer.scene.reset();
 
@@ -264,6 +326,23 @@ impl ApplicationHandler for App {
                                 cursor.col,
                                 TAB_HEIGHT,
                             );
+
+                            if self.terminal_visible {
+                                if let Some(tp) = &mut self.terminal_pane {
+                                    let session = tp.active_session();
+                                    let cell_width = 9.0_f32;
+                                    let cell_height = 18.0_f32;
+                                    let terminal_x = surface_width - 80.0 * cell_width;
+                                    crate::render::terminal::draw_terminal(
+                                        &mut renderer.scene,
+                                        &session.performer.grid,
+                                        terminal_x,
+                                        TAB_HEIGHT,
+                                        cell_width,
+                                        cell_height,
+                                    );
+                                }
+                            }
                         }
                     }
                     renderer.render();
@@ -297,6 +376,32 @@ impl ApplicationHandler for App {
                     if let Some(window) = &self.window {
                         window.request_redraw();
                     }
+                    return;
+                }
+
+                if self.terminal_focused {
+                    if let Some(tp) = &mut self.terminal_pane {
+                        if self.modifiers.super_key() {
+                            if let WKey::Character(s) = &event.logical_key {
+                                match s.as_str() {
+                                    "c" => { tp.active_session().write(&[3]); }
+                                    "v" => {
+                                        if let Some(text) = get_clipboard() {
+                                            tp.active_session().write(text.as_bytes());
+                                        }
+                                    }
+                                    _ => {}
+                                }
+                                if let Some(window) = &self.window { window.request_redraw(); }
+                                return;
+                            }
+                        }
+                        let bytes = key_to_bytes(&event.logical_key, &self.modifiers);
+                        if !bytes.is_empty() {
+                            tp.active_session().write(&bytes);
+                        }
+                    }
+                    if let Some(window) = &self.window { window.request_redraw(); }
                     return;
                 }
 

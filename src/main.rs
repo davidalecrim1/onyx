@@ -4,6 +4,7 @@ mod editor;
 mod markdown;
 mod render;
 mod shell;
+mod terminal;
 mod vim;
 
 use app::App;

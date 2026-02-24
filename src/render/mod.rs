@@ -1,3 +1,4 @@
+pub mod terminal;
 pub mod ui;
 
 use std::sync::Arc;
