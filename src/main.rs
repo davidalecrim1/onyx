@@ -1,6 +1,7 @@
 mod app;
 mod buffer;
 mod render;
+mod vim;
 
 use app::App;
 use winit::event_loop::{ControlFlow, EventLoop};
