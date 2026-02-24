@@ -339,3 +339,36 @@ fn span_attrs(style: &SpanStyle) -> Attrs<'static> {
         _ => Attrs::new(),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::swash_to_rgba;
+    use cosmic_text::{SwashContent, SwashImage};
+    use vello::peniko::Color;
+
+    fn make_image(data: Vec<u8>, content: SwashContent, width: u32, height: u32) -> SwashImage {
+        SwashImage {
+            source: Default::default(),
+            content,
+            placement: cosmic_text::Placement { left: 0, top: 0, width, height },
+            data,
+        }
+    }
+
+    #[test]
+    fn mask_glyph_expands_to_rgba() {
+        let image = make_image(vec![128, 255], SwashContent::Mask, 2, 1);
+        let fg = Color::from_rgba8(255, 200, 0, 255);
+        let result = swash_to_rgba(&image, fg);
+        assert_eq!(result, vec![255, 200, 0, 128, 255, 200, 0, 255]);
+    }
+
+    #[test]
+    fn color_glyph_passes_through() {
+        let data = vec![10, 20, 30, 40, 50, 60, 70, 80];
+        let image = make_image(data.clone(), SwashContent::Color, 2, 1);
+        let fg = Color::from_rgba8(255, 255, 255, 255);
+        let result = swash_to_rgba(&image, fg);
+        assert_eq!(result, data);
+    }
+}
