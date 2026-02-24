@@ -40,7 +40,8 @@ pub enum BufferCommand {
     Yank,
     Delete,
     Change,
-    Paste,
+    /// Carries the text to insert so the engine's register never needs to escape into the editor.
+    Paste(String),
     Undo,
     Redo,
     StartVisual,
@@ -52,17 +53,24 @@ pub struct VimEngine {
     mode: Mode,
     /// The first key of an in-progress multi-key sequence; cleared once the sequence resolves or is cancelled.
     pending: Option<char>,
+    /// Stores the last yanked or deleted text; filled by the editor after buffer operations.
+    register: String,
 }
 
 impl VimEngine {
-    /// Creates a new engine in Normal mode with no pending state.
+    /// Creates a new engine in Normal mode with no pending state and an empty register.
     pub fn new() -> Self {
-        VimEngine { mode: Mode::Normal, pending: None }
+        VimEngine { mode: Mode::Normal, pending: None, register: String::new() }
     }
 
     /// Returns the current modal state.
     pub fn mode(&self) -> Mode {
         self.mode
+    }
+
+    /// Stores yanked or deleted text; called by the editor after it performs the buffer operation.
+    pub fn set_register(&mut self, text: String) {
+        self.register = text;
     }
 
     /// Dispatches a key to the handler for the current mode and returns any resulting command.
@@ -105,7 +113,7 @@ impl VimEngine {
             Key::Char('V') => { self.mode = Mode::Visual; Some(BufferCommand::StartVisualLine) }
             Key::Char('x') => Some(BufferCommand::DeleteCharAtCursor),
             Key::Char(c @ ('g' | 'd' | 'c' | 'y')) => { self.pending = Some(c); None }
-            Key::Char('p') => Some(BufferCommand::Paste),
+            Key::Char('p') => Some(BufferCommand::Paste(self.register.clone())),
             Key::Char('u') => Some(BufferCommand::Undo),
             Key::Char('\x12') => Some(BufferCommand::Redo), // Ctrl-R
             _ => None,
@@ -186,5 +194,13 @@ mod tests {
         vm.handle_key(Key::Char('i'));
         let cmd = vm.handle_key(Key::Char('a'));
         assert_eq!(cmd, Some(BufferCommand::Insert('a')));
+    }
+
+    #[test]
+    fn paste_carries_register_contents() {
+        let mut vm = engine();
+        vm.set_register("hello".to_string());
+        let cmd = vm.handle_key(Key::Char('p'));
+        assert_eq!(cmd, Some(BufferCommand::Paste("hello".to_string())));
     }
 }
