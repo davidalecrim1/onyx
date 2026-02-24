@@ -1,5 +1,5 @@
 pub mod command_registry;
-pub use command_registry::CommandRegistry;
+pub use command_registry::{Command, CommandRegistry};
 pub mod event_bus;
 pub use event_bus::EventBus;
 pub mod file_tree;

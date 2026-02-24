@@ -2,6 +2,33 @@ use std::collections::HashMap;
 
 type CommandFn = Box<dyn FnMut() + Send>;
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Command {
+    FileSave,
+    PaneFileTreeToggle,
+    PaneTerminalToggle,
+    PaneTerminalFocus,
+    TerminalNewTab,
+    TerminalCloseTab,
+    CommandPaletteOpen,
+}
+
+impl Command {
+    /// Converts the string key used in keybindings JSON to a typed Command variant.
+    pub fn from_str(s: &str) -> Result<Self, ()> {
+        match s {
+            "file.save"               => Ok(Self::FileSave),
+            "pane.file_tree.toggle"   => Ok(Self::PaneFileTreeToggle),
+            "pane.terminal.toggle"    => Ok(Self::PaneTerminalToggle),
+            "pane.terminal.focus"     => Ok(Self::PaneTerminalFocus),
+            "terminal.new_tab"        => Ok(Self::TerminalNewTab),
+            "terminal.close_tab"      => Ok(Self::TerminalCloseTab),
+            "command_palette.open"    => Ok(Self::CommandPaletteOpen),
+            _                         => Err(()),
+        }
+    }
+}
+
 pub struct CommandRegistry {
     commands: HashMap<String, CommandFn>,
 }
@@ -62,5 +89,17 @@ mod tests {
         let names = reg.command_names();
         assert!(names.contains(&"a.command"));
         assert!(names.contains(&"b.command"));
+    }
+
+    #[test]
+    fn command_from_str_round_trips() {
+        assert_eq!(Command::from_str("file.save").unwrap(), Command::FileSave);
+        assert_eq!(Command::from_str("pane.file_tree.toggle").unwrap(), Command::PaneFileTreeToggle);
+        assert_eq!(Command::from_str("pane.terminal.toggle").unwrap(), Command::PaneTerminalToggle);
+        assert_eq!(Command::from_str("pane.terminal.focus").unwrap(), Command::PaneTerminalFocus);
+        assert_eq!(Command::from_str("terminal.new_tab").unwrap(), Command::TerminalNewTab);
+        assert_eq!(Command::from_str("terminal.close_tab").unwrap(), Command::TerminalCloseTab);
+        assert_eq!(Command::from_str("command_palette.open").unwrap(), Command::CommandPaletteOpen);
+        assert!(Command::from_str("does.not.exist").is_err());
     }
 }
