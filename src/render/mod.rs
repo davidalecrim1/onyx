@@ -109,11 +109,11 @@ impl Renderer {
             );
             text_buf.shape_until_scroll(&mut self.font_system, false);
 
+            let fg = Color::from_rgba8(220, 220, 220, 255);
             for run in text_buf.layout_runs() {
                 for glyph in run.glyphs.iter() {
                     let physical = glyph.physical((left_pad, y), 1.0);
-                    // Rasterise via swash so the glyph cache is warm; full blit in Milestone 3.
-                    let _ = self.swash_cache.get_image(&mut self.font_system, physical.cache_key);
+                    self.blit_glyph(&physical, fg);
                 }
             }
         }
@@ -184,11 +184,11 @@ impl Renderer {
                 );
                 text_buf.shape_until_scroll(&mut self.font_system, false);
 
+                let fg = span_fg_color(&span.style);
                 for run in text_buf.layout_runs() {
                     for glyph in run.glyphs.iter() {
                         let physical = glyph.physical((x, y), 1.0);
-                        // Rasterise via swash to warm the glyph cache; full blit in Milestone 5.
-                        let _ = self.swash_cache.get_image(&mut self.font_system, physical.cache_key);
+                        self.blit_glyph(&physical, fg);
                         x += glyph.w;
                     }
                 }
@@ -262,10 +262,11 @@ impl Renderer {
                 );
                 text_buf.shape_until_scroll(&mut self.font_system, false);
 
+                let fg = span_fg_color(&span.style);
                 for run in text_buf.layout_runs() {
                     for glyph in run.glyphs.iter() {
                         let physical = glyph.physical((x, y), 1.0);
-                        let _ = self.swash_cache.get_image(&mut self.font_system, physical.cache_key);
+                        self.blit_glyph(&physical, fg);
                         x += glyph.w;
                     }
                 }
@@ -369,6 +370,14 @@ fn swash_to_rgba(image: &cosmic_text::SwashImage, fg: Color) -> Vec<u8> {
             image.data.iter().flat_map(|&alpha| [r, g, b, alpha]).collect()
         }
         cosmic_text::SwashContent::Color => image.data.to_vec(),
+    }
+}
+
+fn span_fg_color(style: &SpanStyle) -> Color {
+    match style {
+        SpanStyle::Code | SpanStyle::CodeBlockText => Color::from_rgba8(171, 200, 148, 255),
+        SpanStyle::BulletMarker => Color::from_rgba8(97, 175, 239, 255),
+        _ => Color::from_rgba8(220, 220, 220, 255),
     }
 }
 
