@@ -332,6 +332,22 @@ fn span_font_size(style: &SpanStyle) -> f32 {
     }
 }
 
+/// Converts a rasterized swash glyph into a flat RGBA byte buffer.
+///
+/// Mask glyphs use the alpha channel from swash data and apply the foreground color to RGB.
+/// Color glyphs pass through unchanged since they already carry RGBA data.
+fn swash_to_rgba(image: &cosmic_text::SwashImage, fg: Color) -> Vec<u8> {
+    let r = (fg.components[0] * 255.0) as u8;
+    let g = (fg.components[1] * 255.0) as u8;
+    let b = (fg.components[2] * 255.0) as u8;
+    match image.content {
+        cosmic_text::SwashContent::Mask | cosmic_text::SwashContent::SubpixelMask => {
+            image.data.iter().flat_map(|&alpha| [r, g, b, alpha]).collect()
+        }
+        cosmic_text::SwashContent::Color => image.data.to_vec(),
+    }
+}
+
 fn span_attrs(style: &SpanStyle) -> Attrs<'static> {
     match style {
         SpanStyle::Bold | SpanStyle::Heading(_) => Attrs::new().weight(Weight::BOLD),
