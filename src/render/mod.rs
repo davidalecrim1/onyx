@@ -71,7 +71,7 @@ impl Renderer {
 
     /// Draws each buffer line and a cursor rectangle; kept for raw-mode fallback.
     #[allow(dead_code)]
-    pub fn draw_buffer(&mut self, lines: &[String], cursor_line: usize, cursor_col: usize) {
+    pub fn draw_buffer(&mut self, lines: &[String], cursor_line: usize, cursor_col: usize, scale_factor: f32) {
         let metrics = Metrics::new(15.0, 22.0);
         let line_height = 22.0_f32;
         let left_pad = 48.0_f32;
@@ -112,7 +112,7 @@ impl Renderer {
             let fg = Color::from_rgba8(220, 220, 220, 255);
             for run in text_buf.layout_runs() {
                 for glyph in run.glyphs.iter() {
-                    let physical = glyph.physical((left_pad, y), 1.0);
+                    let physical = glyph.physical((left_pad, y), scale_factor);
                     self.blit_glyph(&physical, fg);
                 }
             }
@@ -125,6 +125,7 @@ impl Renderer {
         render_lines: &[RenderLine],
         cursor_line: usize,
         cursor_col: usize,
+        scale_factor: f32,
     ) {
         let left_pad = 48.0_f32;
         let top_pad = 8.0_f32;
@@ -187,7 +188,7 @@ impl Renderer {
                 let fg = span_fg_color(&span.style);
                 for run in text_buf.layout_runs() {
                     for glyph in run.glyphs.iter() {
-                        let physical = glyph.physical((x, y), 1.0);
+                        let physical = glyph.physical((x, y), scale_factor);
                         self.blit_glyph(&physical, fg);
                         x += glyph.w;
                     }
@@ -203,6 +204,7 @@ impl Renderer {
         cursor_line: usize,
         cursor_col: usize,
         top_offset: f32,
+        scale_factor: f32,
     ) {
         let left_pad = 48.0_f32;
         let top_pad = top_offset + 8.0_f32;
@@ -265,7 +267,7 @@ impl Renderer {
                 let fg = span_fg_color(&span.style);
                 for run in text_buf.layout_runs() {
                     for glyph in run.glyphs.iter() {
-                        let physical = glyph.physical((x, y), 1.0);
+                        let physical = glyph.physical((x, y), scale_factor);
                         self.blit_glyph(&physical, fg);
                         x += glyph.w;
                     }

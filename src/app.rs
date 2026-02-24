@@ -37,6 +37,7 @@ pub struct App {
     terminal_pane: Option<TerminalPane>,
     terminal_visible: bool,
     terminal_focused: bool,
+    scale_factor: f32,
 }
 
 impl App {
@@ -90,6 +91,7 @@ impl App {
             terminal_pane: None,
             terminal_visible: false,
             terminal_focused: false,
+            scale_factor: 1.0,
         }
     }
 
@@ -234,6 +236,7 @@ impl ApplicationHandler for App {
                 .create_window(Window::default_attributes().with_title("Onyx"))
                 .expect("failed to create window"),
         );
+        self.scale_factor = window.scale_factor() as f32;
         let renderer = Renderer::new(window.clone());
         self.window = Some(window);
         self.renderer = Some(renderer);
@@ -254,6 +257,9 @@ impl ApplicationHandler for App {
                 if let Some(renderer) = &mut self.renderer {
                     renderer.resize(size);
                 }
+            }
+            WindowEvent::ScaleFactorChanged { scale_factor, .. } => {
+                self.scale_factor = scale_factor as f32;
             }
             WindowEvent::ModifiersChanged(state) => {
                 self.modifiers = state.state();
@@ -287,7 +293,7 @@ impl ApplicationHandler for App {
                                     }],
                                 },
                             ];
-                            renderer.draw_render_lines(&lines, usize::MAX, 0);
+                            renderer.draw_render_lines(&lines, usize::MAX, 0, self.scale_factor);
                         }
                         AppState::Editor { .. } => {
                             draw_tab_bar(
@@ -325,6 +331,7 @@ impl ApplicationHandler for App {
                                 cursor.line,
                                 cursor.col,
                                 TAB_HEIGHT,
+                                self.scale_factor,
                             );
 
                             if self.terminal_visible {
