@@ -44,38 +44,9 @@ impl App {
     /// Creates the app, loading global config and determining whether to show the welcome screen.
     pub fn new() -> Self {
         let global_config = GlobalConfig::load();
-        let (state, tab) = if global_config.last_active.is_empty() {
-            (AppState::Welcome, Tab::new(""))
-        } else {
-            let vault_root = global_config.last_active[0].clone();
-            let vault_config = VaultConfig::load(&vault_root);
-            let (initial_text, cursor_line, cursor_col) = vault_config
-                .open_tabs
-                .first()
-                .and_then(|t| {
-                    let text = std::fs::read_to_string(vault_root.join(&t.file_path)).ok()?;
-                    Some((text, t.cursor_line, t.cursor_col))
-                })
-                .unwrap_or_default();
-            let mut tab = Tab::new(&initial_text);
-            for _ in 0..cursor_line {
-                tab.editor.buffer.move_down();
-            }
-            for _ in 0..cursor_col {
-                tab.editor.buffer.move_right();
-            }
-            (AppState::Editor { vault_root, vault_config }, tab)
-        };
-
+        let (state, tab) = Self::load_initial_state(&global_config);
         let mut commands = CommandRegistry::new();
-        commands.register("file.save", || {});
-        commands.register("pane.file_tree.toggle", || {});
-        commands.register("pane.terminal.toggle", || {});
-        commands.register("pane.terminal.focus", || {});
-        commands.register("terminal.new_tab", || {});
-        commands.register("terminal.close_tab", || {});
-        commands.register("command_palette.open", || {});
-
+        Self::register_commands(&mut commands);
         App {
             window: None,
             renderer: None,
@@ -93,6 +64,42 @@ impl App {
             terminal_focused: false,
             scale_factor: 1.0,
         }
+    }
+
+    /// Determines initial AppState and Tab from global config without touching any window.
+    fn load_initial_state(global_config: &GlobalConfig) -> (AppState, Tab) {
+        if global_config.last_active.is_empty() {
+            return (AppState::Welcome, Tab::new(""));
+        }
+        let vault_root = global_config.last_active[0].clone();
+        let vault_config = VaultConfig::load(&vault_root);
+        let (initial_text, cursor_line, cursor_col) = vault_config
+            .open_tabs
+            .first()
+            .and_then(|t| {
+                let text = std::fs::read_to_string(vault_root.join(&t.file_path)).ok()?;
+                Some((text, t.cursor_line, t.cursor_col))
+            })
+            .unwrap_or_default();
+        let mut tab = Tab::new(&initial_text);
+        for _ in 0..cursor_line {
+            tab.editor.buffer.move_down();
+        }
+        for _ in 0..cursor_col {
+            tab.editor.buffer.move_right();
+        }
+        (AppState::Editor { vault_root, vault_config }, tab)
+    }
+
+    /// Registers all built-in named commands into the registry.
+    fn register_commands(commands: &mut CommandRegistry) {
+        commands.register("file.save", || {});
+        commands.register("pane.file_tree.toggle", || {});
+        commands.register("pane.terminal.toggle", || {});
+        commands.register("pane.terminal.focus", || {});
+        commands.register("terminal.new_tab", || {});
+        commands.register("terminal.close_tab", || {});
+        commands.register("command_palette.open", || {});
     }
 
     fn open_vault(&mut self, path: PathBuf) {
@@ -148,35 +155,39 @@ impl App {
     }
 
     fn handle_named_command(&mut self, name: &str) {
-        match name {
-            "file.save" => self.save_vault_state(),
-            "pane.file_tree.toggle" => {
+        let Ok(cmd) = crate::shell::Command::from_str(name) else {
+            self.commands.execute(name);
+            if let Some(window) = &self.window {
+                window.request_redraw();
+            }
+            return;
+        };
+        match cmd {
+            crate::shell::Command::FileSave => self.save_vault_state(),
+            crate::shell::Command::PaneFileTreeToggle => {
                 self.file_tree_visible = !self.file_tree_visible;
                 self.events.emit("pane.toggled", "file_tree");
             }
-            "pane.terminal.toggle" => {
+            crate::shell::Command::PaneTerminalToggle => {
                 self.terminal_visible = !self.terminal_visible;
                 self.events.emit("pane.toggled", "terminal");
             }
-            "pane.terminal.focus" => {
+            crate::shell::Command::PaneTerminalFocus => {
                 self.terminal_visible = true;
                 self.terminal_focused = true;
             }
-            "terminal.new_tab" => {
+            crate::shell::Command::TerminalNewTab => {
                 if let Some(tp) = &mut self.terminal_pane {
                     tp.new_tab();
                 }
             }
-            "terminal.close_tab" => {
+            crate::shell::Command::TerminalCloseTab => {
                 if let Some(tp) = &mut self.terminal_pane {
                     tp.close_tab();
                 }
             }
-            "command_palette.open" => {
+            crate::shell::Command::CommandPaletteOpen => {
                 eprintln!("[command palette] TODO");
-            }
-            _ => {
-                self.commands.execute(name);
             }
         }
         if let Some(window) = &self.window {
@@ -441,5 +452,18 @@ impl ApplicationHandler for App {
             }
             _ => {}
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn load_initial_state_returns_welcome_when_no_vaults() {
+        let global_config = GlobalConfig::default();
+        let (state, tab) = App::load_initial_state(&global_config);
+        assert!(matches!(state, AppState::Welcome));
+        assert!(tab.file_path.is_none());
     }
 }
