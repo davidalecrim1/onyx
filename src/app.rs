@@ -148,35 +148,39 @@ impl App {
     }
 
     fn handle_named_command(&mut self, name: &str) {
-        match name {
-            "file.save" => self.save_vault_state(),
-            "pane.file_tree.toggle" => {
+        let Ok(cmd) = crate::shell::Command::from_str(name) else {
+            self.commands.execute(name);
+            if let Some(window) = &self.window {
+                window.request_redraw();
+            }
+            return;
+        };
+        match cmd {
+            crate::shell::Command::FileSave => self.save_vault_state(),
+            crate::shell::Command::PaneFileTreeToggle => {
                 self.file_tree_visible = !self.file_tree_visible;
                 self.events.emit("pane.toggled", "file_tree");
             }
-            "pane.terminal.toggle" => {
+            crate::shell::Command::PaneTerminalToggle => {
                 self.terminal_visible = !self.terminal_visible;
                 self.events.emit("pane.toggled", "terminal");
             }
-            "pane.terminal.focus" => {
+            crate::shell::Command::PaneTerminalFocus => {
                 self.terminal_visible = true;
                 self.terminal_focused = true;
             }
-            "terminal.new_tab" => {
+            crate::shell::Command::TerminalNewTab => {
                 if let Some(tp) = &mut self.terminal_pane {
                     tp.new_tab();
                 }
             }
-            "terminal.close_tab" => {
+            crate::shell::Command::TerminalCloseTab => {
                 if let Some(tp) = &mut self.terminal_pane {
                     tp.close_tab();
                 }
             }
-            "command_palette.open" => {
+            crate::shell::Command::CommandPaletteOpen => {
                 eprintln!("[command palette] TODO");
-            }
-            _ => {
-                self.commands.execute(name);
             }
         }
         if let Some(window) = &self.window {

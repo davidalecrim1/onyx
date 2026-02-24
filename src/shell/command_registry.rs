@@ -92,6 +92,11 @@ mod tests {
     }
 
     #[test]
+    fn unknown_string_yields_err() {
+        assert!(Command::from_str("typo.command").is_err());
+    }
+
+    #[test]
     fn command_from_str_round_trips() {
         assert_eq!(Command::from_str("file.save").unwrap(), Command::FileSave);
         assert_eq!(Command::from_str("pane.file_tree.toggle").unwrap(), Command::PaneFileTreeToggle);
