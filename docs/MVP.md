@@ -18,10 +18,12 @@ An Obsidian like Markdown editor built in Rust. Inspired by Zed minimalist and f
 - Native terminal integration to support running Claude Code on the terminal to leverage AI on the files.
 - Native encryption of files with password using something like AES 256.
 - Initially default Zed team colors inspired.
+- Markdown by design.
 
 ### Maybe on the future
 - An alternative to support Git as well for native file sync by design.
   - Reflect on this based on how the Git extensions works for Obsidian.
+- Audio notes support with transcribe feature.
 
 ### Just dreaming
 - A native app for mobile to leverage the files on ICloud.

@@ -1,3 +1,5 @@
+pub mod ui;
+
 use std::sync::Arc;
 use cosmic_text::{Attrs, Buffer as TextBuffer, FontSystem, Metrics, Style, SwashCache, Weight};
 use vello::kurbo::{Affine, Rect};
@@ -45,6 +47,16 @@ impl Renderer {
         let swash_cache = SwashCache::new();
 
         Renderer { render_context, render_surface, vello, scene, font_system, swash_cache }
+    }
+
+    /// Returns the current surface width in logical pixels.
+    pub fn surface_width(&self) -> f32 {
+        self.render_surface.config.width as f32
+    }
+
+    /// Returns the current surface height in logical pixels.
+    pub fn surface_height(&self) -> f32 {
+        self.render_surface.config.height as f32
     }
 
     /// Handles a window resize; skips zero-area sizes that would panic the surface.
@@ -175,6 +187,83 @@ impl Renderer {
                     for glyph in run.glyphs.iter() {
                         let physical = glyph.physical((x, y), 1.0);
                         // Rasterise via swash to warm the glyph cache; full blit in Milestone 5.
+                        let _ = self.swash_cache.get_image(&mut self.font_system, physical.cache_key);
+                        x += glyph.w;
+                    }
+                }
+            }
+        }
+    }
+
+    /// Draws render lines with a vertical offset from the top of the surface.
+    pub fn draw_render_lines_offset(
+        &mut self,
+        render_lines: &[RenderLine],
+        cursor_line: usize,
+        cursor_col: usize,
+        top_offset: f32,
+    ) {
+        let left_pad = 48.0_f32;
+        let top_pad = top_offset + 8.0_f32;
+        let base_line_height = 22.0_f32;
+        let char_width = 9.0_f32;
+        let surface_width = self.render_surface.config.width as f32;
+
+        for (line_idx, render_line) in render_lines.iter().enumerate() {
+            let line_height = heading_line_height(&render_line.spans, base_line_height);
+            let y = top_pad + line_idx as f32 * base_line_height;
+
+            if render_line.spans.iter().any(|span| span.style == SpanStyle::CodeBlockText) {
+                let bg = Rect::new(
+                    left_pad as f64,
+                    y as f64,
+                    (surface_width - left_pad) as f64,
+                    (y + line_height) as f64,
+                );
+                self.scene.fill(
+                    Fill::NonZero,
+                    Affine::IDENTITY,
+                    &Brush::Solid(Color::from_rgba8(30, 30, 36, 255)),
+                    None,
+                    &bg,
+                );
+            }
+
+            if line_idx == cursor_line {
+                let cx = left_pad + cursor_col as f32 * char_width;
+                let cursor_rect = Rect::new(
+                    cx as f64,
+                    y as f64,
+                    (cx + char_width) as f64,
+                    (y + line_height) as f64,
+                );
+                self.scene.fill(
+                    Fill::NonZero,
+                    Affine::IDENTITY,
+                    &Brush::Solid(Color::from_rgba8(97, 175, 239, 180)),
+                    None,
+                    &cursor_rect,
+                );
+            }
+
+            let mut x = left_pad;
+            for span in &render_line.spans {
+                let font_size = span_font_size(&span.style);
+                let metrics = Metrics::new(font_size, line_height);
+                let mut text_buf = TextBuffer::new(&mut self.font_system, metrics);
+                text_buf.set_size(&mut self.font_system, Some(surface_width - x), None);
+                let attrs = span_attrs(&span.style);
+                text_buf.set_text(
+                    &mut self.font_system,
+                    &span.text,
+                    attrs,
+                    cosmic_text::Shaping::Advanced,
+                );
+                text_buf.shape_until_scroll(&mut self.font_system, false);
+
+                for run in text_buf.layout_runs() {
+                    for glyph in run.glyphs.iter() {
+                        let physical = glyph.physical((x, y), 1.0);
                         let _ = self.swash_cache.get_image(&mut self.font_system, physical.cache_key);
                         x += glyph.w;
                     }

@@ -1,2 +1,10 @@
+pub mod command_registry;
+pub use command_registry::CommandRegistry;
+pub mod event_bus;
+pub use event_bus::EventBus;
+pub mod file_tree;
+pub use file_tree::{FileEntry, FileTree};
+pub mod keybindings;
+pub use keybindings::KeyBindings;
 pub mod vault;
 pub use vault::{GlobalConfig, PaneLayout, TabState, VaultConfig, VaultEntry, ViewModeState};

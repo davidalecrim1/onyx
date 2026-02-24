@@ -47,7 +47,7 @@ winit events → KeyBindings → CommandRegistry → VimEngine → BufferCommand
 - Prefer `src/some_module.rs` over `src/some_module/mod.rs`
 - Implement new functionality in existing files unless it is a clearly distinct logical component
 - Use variable shadowing in async contexts to scope clones and minimize borrow lifetimes
-- Comments explain the *why* only — never summarize what the code does, and never use section separator comments like `// --- Section ---`
+- Comments explain the *why* only — never summarize what the code does, and never use section separator comments like `// --- Section ---` or `// ── Label ──────`
 - Every public method gets exactly one doc comment line (`///`); don't restate the signature — add context, edge cases, or the non-obvious rule being enforced
 - Avoid deep nesting — prefer early returns, guard clauses, and extracting nested blocks into named functions. If a block is indented more than 2–3 levels, it's a signal to refactor
 

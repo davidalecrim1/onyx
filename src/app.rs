@@ -9,8 +9,11 @@ use winit::{
 };
 
 use crate::editor::{RenderLine, RenderSpan, SpanStyle, Tab};
+use crate::render::ui::{draw_file_tree, draw_tab_bar, FILE_TREE_WIDTH, TAB_HEIGHT};
 use crate::render::Renderer;
-use crate::shell::{GlobalConfig, VaultConfig};
+use crate::shell::{
+    CommandRegistry, EventBus, FileTree, GlobalConfig, KeyBindings, VaultConfig,
+};
 use crate::vim::Key;
 
 enum AppState {
@@ -25,6 +28,11 @@ pub struct App {
     modifiers: ModifiersState,
     state: AppState,
     global_config: GlobalConfig,
+    commands: CommandRegistry,
+    events: EventBus,
+    keybindings: KeyBindings,
+    file_tree: Option<FileTree>,
+    file_tree_visible: bool,
 }
 
 impl App {
@@ -54,6 +62,13 @@ impl App {
             (AppState::Editor { vault_root, vault_config }, tab)
         };
 
+        let mut commands = CommandRegistry::new();
+        commands.register("file.save", || {});
+        commands.register("pane.file_tree.toggle", || {});
+        commands.register("pane.terminal.toggle", || {});
+        commands.register("pane.terminal.focus", || {});
+        commands.register("command_palette.open", || {});
+
         App {
             window: None,
             renderer: None,
@@ -61,6 +76,11 @@ impl App {
             modifiers: ModifiersState::empty(),
             state,
             global_config,
+            commands,
+            events: EventBus::new(),
+            keybindings: KeyBindings::load_for_platform(),
+            file_tree: None,
+            file_tree_visible: false,
         }
     }
 
@@ -79,6 +99,7 @@ impl App {
             .unwrap_or_default();
 
         self.tab = Tab::new(&initial_text);
+        self.file_tree = Some(FileTree::new(&path));
         self.state = AppState::Editor { vault_root: path, vault_config };
 
         if let Some(window) = &self.window {
@@ -113,6 +134,39 @@ impl App {
             std::fs::write(vault_root.join(file_path), self.tab.editor.buffer_text()).ok();
         }
     }
+
+    fn handle_named_command(&mut self, name: &str) {
+        match name {
+            "file.save" => self.save_vault_state(),
+            "pane.file_tree.toggle" => {
+                self.file_tree_visible = !self.file_tree_visible;
+                self.events.emit("pane.toggled", "file_tree");
+            }
+            "command_palette.open" => {
+                eprintln!("[command palette] TODO");
+            }
+            _ => {
+                self.commands.execute(name);
+            }
+        }
+        if let Some(window) = &self.window {
+            window.request_redraw();
+        }
+    }
+}
+
+/// Builds a chord string like "cmd+s" or "cmd+option+b" from a key event.
+fn build_chord(logical_key: &WKey, modifiers: &ModifiersState) -> Option<String> {
+    let mut parts = Vec::new();
+    if modifiers.super_key()   { parts.push("cmd"); }
+    if modifiers.alt_key()     { parts.push("option"); }
+    if modifiers.control_key() { parts.push("ctrl"); }
+    if modifiers.shift_key()   { parts.push("shift"); }
+    if let WKey::Character(s) = logical_key {
+        parts.push(s.as_str());
+        return Some(parts.join("+"));
+    }
+    None
 }
 
 impl ApplicationHandler for App {
@@ -149,6 +203,10 @@ impl ApplicationHandler for App {
             WindowEvent::RedrawRequested => {
                 if let Some(renderer) = &mut self.renderer {
                     renderer.scene.reset();
+
+                    let surface_width = renderer.surface_width();
+                    let surface_height = renderer.surface_height();
+
                     match &self.state {
                         AppState::Welcome => {
                             let lines = vec![
@@ -170,13 +228,42 @@ impl ApplicationHandler for App {
                             renderer.draw_render_lines(&lines, usize::MAX, 0);
                         }
                         AppState::Editor { .. } => {
+                            draw_tab_bar(
+                                &mut renderer.scene,
+                                &[self.tab.file_path.as_ref()
+                                    .and_then(|p| p.file_name())
+                                    .map(|n| n.to_string_lossy().into_owned())
+                                    .unwrap_or_else(|| "untitled.md".into())],
+                                0,
+                                surface_width,
+                            );
+
+                            if self.file_tree_visible {
+                                let entries = self.file_tree.as_ref()
+                                    .map(|ft| ft.entries())
+                                    .unwrap_or_default();
+                                draw_file_tree(&mut renderer.scene, &entries, None, surface_height);
+                            }
+
+                            let editor_left = if self.file_tree_visible {
+                                FILE_TREE_WIDTH
+                            } else {
+                                0.0
+                            };
+                            let _ = editor_left;
+
                             self.tab.sync_document();
                             let render_lines = self.tab.editor.build_render_lines(
                                 &self.tab.document,
                                 self.tab.view_mode,
                             );
                             let cursor = self.tab.editor.buffer.cursor();
-                            renderer.draw_render_lines(&render_lines, cursor.line, cursor.col);
+                            renderer.draw_render_lines_offset(
+                                &render_lines,
+                                cursor.line,
+                                cursor.col,
+                                TAB_HEIGHT,
+                            );
                         }
                     }
                     renderer.render();
@@ -190,7 +277,6 @@ impl ApplicationHandler for App {
                     return;
                 }
 
-                // Welcome screen handles only O and C.
                 if let AppState::Welcome = &self.state {
                     if let WKey::Character(s) = &event.logical_key {
                         match s.as_str() {
@@ -214,21 +300,10 @@ impl ApplicationHandler for App {
                     return;
                 }
 
-                // cmd+s saves vault state.
-                if let WKey::Character(s) = &event.logical_key {
-                    if s == "s" && self.modifiers.super_key() {
-                        self.save_vault_state();
-                        return;
-                    }
-                }
-
-                // ctrl+t toggles Live Preview / Raw mode for the active tab.
-                if let WKey::Character(ref s) = event.logical_key {
-                    if s == "t" && self.modifiers.control_key() {
-                        self.tab.toggle_view_mode();
-                        if let Some(window) = &self.window {
-                            window.request_redraw();
-                        }
+                if let Some(chord) = build_chord(&event.logical_key, &self.modifiers) {
+                    if let Some(cmd_name) = self.keybindings.resolve(&chord) {
+                        let cmd_name = cmd_name.to_string();
+                        self.handle_named_command(&cmd_name);
                         return;
                     }
                 }
