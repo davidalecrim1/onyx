@@ -3,6 +3,7 @@ mod buffer;
 mod editor;
 mod markdown;
 mod render;
+mod shell;
 mod vim;
 
 use app::App;
