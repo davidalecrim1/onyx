@@ -10,7 +10,7 @@ use winit::{
 
 use crate::editor::{RenderLine, RenderSpan, SpanStyle, Tab};
 use crate::render::ui::{draw_file_tree, draw_tab_bar, FILE_TREE_WIDTH, TAB_HEIGHT};
-use crate::render::Renderer;
+use crate::render::{CursorShape, Renderer};
 use crate::shell::{
     CommandRegistry, EventBus, FileTree, GlobalConfig, KeyBindings, VaultConfig,
 };
@@ -304,7 +304,7 @@ impl ApplicationHandler for App {
                                     }],
                                 },
                             ];
-                            renderer.draw_render_lines(&lines, usize::MAX, 0, self.scale_factor);
+                            renderer.draw_render_lines(&lines, usize::MAX, 0, CursorShape::Block, self.scale_factor);
                         }
                         AppState::Editor { .. } => {
                             draw_tab_bar(
@@ -337,10 +337,16 @@ impl ApplicationHandler for App {
                                 self.tab.view_mode,
                             );
                             let cursor = self.tab.editor.buffer.cursor();
+                            let cursor_shape = match self.tab.mode() {
+                                crate::vim::Mode::Insert => CursorShape::IBeam,
+                                _ => CursorShape::Block,
+                            };
                             renderer.draw_render_lines_offset(
                                 &render_lines,
                                 cursor.line,
                                 cursor.col,
+                                cursor_shape,
+                                self.tab.editor.buffer.scroll_offset(),
                                 TAB_HEIGHT,
                                 self.scale_factor,
                             );
@@ -443,7 +449,12 @@ impl ApplicationHandler for App {
                     _ => None,
                 };
                 if let Some(k) = key {
-                    self.tab.editor.handle_key(k);
+                    let viewport_lines = if let Some(renderer) = &self.renderer {
+                        ((renderer.surface_height() - TAB_HEIGHT) / 22.0) as usize
+                    } else {
+                        24
+                    };
+                    self.tab.editor.handle_key(k, viewport_lines);
                     self.tab.mark_dirty();
                     if let Some(window) = &self.window {
                         window.request_redraw();
