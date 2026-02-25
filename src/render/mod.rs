@@ -11,6 +11,23 @@ use winit::window::Window;
 
 use crate::editor::{RenderLine, SpanStyle};
 
+#[derive(Copy, Clone)]
+pub(crate) enum CursorShape {
+    Block,
+    IBeam,
+}
+
+/// Returns the pixel x-coordinate of the cursor at `col` given per-glyph advance widths.
+/// Falls back to col * fallback_advance if col exceeds the glyph count.
+fn cursor_pixel_x(advances: &[f32], col: usize, left_pad: f32, fallback_advance: f32) -> f32 {
+    let x: f32 = advances.iter().take(col).sum();
+    left_pad + x + if col >= advances.len() {
+        (col - advances.len()) as f32 * fallback_advance
+    } else {
+        0.0
+    }
+}
+
 pub struct Renderer {
     render_context: RenderContext,
     render_surface: vello::util::RenderSurface<'static>,
@@ -125,12 +142,13 @@ impl Renderer {
         render_lines: &[RenderLine],
         cursor_line: usize,
         cursor_col: usize,
+        cursor_shape: CursorShape,
         scale_factor: f32,
     ) {
         let left_pad = 48.0_f32;
         let top_pad = 8.0_f32;
         let base_line_height = 22.0_f32;
-        let char_width = 9.0_f32;
+        let fallback_advance = 9.0_f32;
         let surface_width = self.render_surface.config.width as f32;
 
         for (line_idx, render_line) in render_lines.iter().enumerate() {
@@ -153,24 +171,8 @@ impl Renderer {
                 );
             }
 
-            if line_idx == cursor_line {
-                let cx = left_pad + cursor_col as f32 * char_width;
-                let cursor_rect = Rect::new(
-                    cx as f64,
-                    y as f64,
-                    (cx + char_width) as f64,
-                    (y + line_height) as f64,
-                );
-                self.scene.fill(
-                    Fill::NonZero,
-                    Affine::IDENTITY,
-                    &Brush::Solid(Color::from_rgba8(97, 175, 239, 180)),
-                    None,
-                    &cursor_rect,
-                );
-            }
-
             let mut x = left_pad;
+            let mut advances: Vec<f32> = Vec::new();
             for span in &render_line.spans {
                 let font_size = span_font_size(&span.style);
                 let metrics = Metrics::new(font_size, line_height);
@@ -190,9 +192,37 @@ impl Renderer {
                     for glyph in run.glyphs.iter() {
                         let physical = glyph.physical((x, y), scale_factor);
                         self.blit_glyph(&physical, fg);
+                        if line_idx == cursor_line {
+                            advances.push(glyph.w);
+                        }
                         x += glyph.w;
                     }
                 }
+            }
+
+            if line_idx == cursor_line {
+                let cx = cursor_pixel_x(&advances, cursor_col, left_pad, fallback_advance);
+                let cursor_width = match cursor_shape {
+                    CursorShape::Block => fallback_advance,
+                    CursorShape::IBeam => 2.0,
+                };
+                let cursor_color = match cursor_shape {
+                    CursorShape::Block => Color::from_rgba8(97, 175, 239, 180),
+                    CursorShape::IBeam => Color::from_rgba8(97, 175, 239, 255),
+                };
+                let cursor_rect = Rect::new(
+                    cx as f64,
+                    y as f64,
+                    (cx + cursor_width) as f64,
+                    (y + line_height) as f64,
+                );
+                self.scene.fill(
+                    Fill::NonZero,
+                    Affine::IDENTITY,
+                    &Brush::Solid(cursor_color),
+                    None,
+                    &cursor_rect,
+                );
             }
         }
     }
@@ -203,16 +233,21 @@ impl Renderer {
         render_lines: &[RenderLine],
         cursor_line: usize,
         cursor_col: usize,
+        cursor_shape: CursorShape,
+        scroll_offset: usize,
         top_offset: f32,
         scale_factor: f32,
     ) {
         let left_pad = 48.0_f32;
         let top_pad = top_offset + 8.0_f32;
         let base_line_height = 22.0_f32;
-        let char_width = 9.0_f32;
+        let fallback_advance = 9.0_f32;
         let surface_width = self.render_surface.config.width as f32;
 
-        for (line_idx, render_line) in render_lines.iter().enumerate() {
+        let visible = render_lines.get(scroll_offset..).unwrap_or(&[]);
+        let cursor_line_local = cursor_line.saturating_sub(scroll_offset);
+
+        for (line_idx, render_line) in visible.iter().enumerate() {
             let line_height = heading_line_height(&render_line.spans, base_line_height);
             let y = top_pad + line_idx as f32 * base_line_height;
 
@@ -232,24 +267,8 @@ impl Renderer {
                 );
             }
 
-            if line_idx == cursor_line {
-                let cx = left_pad + cursor_col as f32 * char_width;
-                let cursor_rect = Rect::new(
-                    cx as f64,
-                    y as f64,
-                    (cx + char_width) as f64,
-                    (y + line_height) as f64,
-                );
-                self.scene.fill(
-                    Fill::NonZero,
-                    Affine::IDENTITY,
-                    &Brush::Solid(Color::from_rgba8(97, 175, 239, 180)),
-                    None,
-                    &cursor_rect,
-                );
-            }
-
             let mut x = left_pad;
+            let mut advances: Vec<f32> = Vec::new();
             for span in &render_line.spans {
                 let font_size = span_font_size(&span.style);
                 let metrics = Metrics::new(font_size, line_height);
@@ -269,9 +288,37 @@ impl Renderer {
                     for glyph in run.glyphs.iter() {
                         let physical = glyph.physical((x, y), scale_factor);
                         self.blit_glyph(&physical, fg);
+                        if line_idx == cursor_line_local {
+                            advances.push(glyph.w);
+                        }
                         x += glyph.w;
                     }
                 }
+            }
+
+            if line_idx == cursor_line_local {
+                let cx = cursor_pixel_x(&advances, cursor_col, left_pad, fallback_advance);
+                let cursor_width = match cursor_shape {
+                    CursorShape::Block => fallback_advance,
+                    CursorShape::IBeam => 2.0,
+                };
+                let cursor_color = match cursor_shape {
+                    CursorShape::Block => Color::from_rgba8(97, 175, 239, 180),
+                    CursorShape::IBeam => Color::from_rgba8(97, 175, 239, 255),
+                };
+                let cursor_rect = Rect::new(
+                    cx as f64,
+                    y as f64,
+                    (cx + cursor_width) as f64,
+                    (y + line_height) as f64,
+                );
+                self.scene.fill(
+                    Fill::NonZero,
+                    Affine::IDENTITY,
+                    &Brush::Solid(cursor_color),
+                    None,
+                    &cursor_rect,
+                );
             }
         }
     }
@@ -393,9 +440,30 @@ fn span_attrs(style: &SpanStyle) -> Attrs<'static> {
 
 #[cfg(test)]
 mod tests {
-    use super::swash_to_rgba;
+    use super::{cursor_pixel_x, swash_to_rgba};
     use cosmic_text::{SwashContent, SwashImage};
     use vello::peniko::Color;
+
+    #[test]
+    fn cursor_x_after_two_glyphs() {
+        let advances = vec![8.0_f32, 8.0_f32];
+        let result = cursor_pixel_x(&advances, 2, 48.0, 9.0);
+        assert_eq!(result, 64.0); // 48.0 (left_pad) + 16.0 (8+8)
+    }
+
+    #[test]
+    fn cursor_x_fallback_beyond_glyphs() {
+        let advances = vec![8.0_f32];
+        let result = cursor_pixel_x(&advances, 3, 48.0, 9.0);
+        assert_eq!(result, 48.0 + 8.0 + 2.0 * 9.0); // left_pad + 8.0 + 2 * fallback
+    }
+
+    #[test]
+    fn cursor_x_at_col_zero() {
+        let advances = vec![8.0_f32, 8.0_f32];
+        let result = cursor_pixel_x(&advances, 0, 48.0, 9.0);
+        assert_eq!(result, 48.0);
+    }
 
     fn make_image(data: Vec<u8>, content: SwashContent, width: u32, height: u32) -> SwashImage {
         SwashImage {
