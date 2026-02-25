@@ -1,9 +1,0 @@
-{
-  "cmd+b":         "pane.file_tree.toggle",
-  "cmd+option+b":  "pane.terminal.toggle",
-  "cmd+j":         "pane.terminal.focus",
-  "cmd+s":         "file.save",
-  "cmd+p":         "command_palette.open",
-  "cmd+t":         "terminal.new_tab",
-  "cmd+w":         "terminal.close_tab"
-}

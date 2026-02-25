@@ -1,4 +1,4 @@
-.PHONY: build run test lint check clean
+.PHONY: build run test lint check clean format
 
 build:
 	cargo build
@@ -14,6 +14,9 @@ lint:
 
 check:
 	cargo check --all-targets
+
+format:
+	cargo fmt --all
 
 clean:
 	cargo clean

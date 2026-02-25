@@ -1,43 +1,18 @@
 # Onyx
 
-## Project Structure
+## Architecture
 
-```
-src/
-├── main.rs          # Entry point — env_logger init, winit event loop, nothing else
-├── app.rs           # App struct, ApplicationHandler impl, window + renderer lifecycle
-├── render.rs        # GPU pipeline: wgpu surface + Vello scene + cosmic-text layout
-├── buffer.rs        # Rope-backed text buffer with cursor, selection, insert/delete/move
-├── vim.rs           # Vim modal state machine — receives Key, emits BufferCommand
-├── editor.rs        # Editor layer tying buffer + vim; RenderLine/RenderSpan output
-├── markdown.rs      # Markdown parser — Document, Block, Inline AST types
-├── terminal.rs      # Embedded terminal: pty spawn, VTE parsing, grid cells
-└── shell/           # Workspace infrastructure (only subdir — multiple tightly-coupled files)
-    ├── mod.rs
-    ├── vault.rs             # VaultConfig, GlobalConfig, TabState serialization
-    ├── command_registry.rs  # Named commands → closures dispatch
-    ├── event_bus.rs         # Pub/sub for named events (dot notation: buffer.changed)
-    ├── keybindings.rs       # JSON chord → command name resolution
-    └── file_tree.rs         # .md file listing, CRUD within vault root
-```
+**Input layer** — `winit` delivers OS events to `App`. Raw key events are normalized into chords and resolved to command names via `KeyBindings`. No component below this layer ever receives a raw OS event.
 
-### Architecture Layers
+**Dispatch layer** — `CommandRegistry` maps command names to handlers. All user actions — whether from keybindings, the command palette, or plugins — flow through here as named strings (e.g. `file.save`, `pane.file_tree.toggle`). Keybindings never call functions directly.
 
-```
-winit events → KeyBindings → CommandRegistry → VimEngine → BufferCommand → Buffer
-                                                              ↓
-                                              Editor::build_render_lines()
-                                                              ↓
-                                              Renderer (Vello + cosmic-text → wgpu)
-```
+**Editing layer** — `Editor` owns a `Buffer` and a `VimEngine`. The Vim engine is a pure state machine: it receives a `Key` and returns a `BufferCommand`, never touching shared state. `Editor` applies that command to the buffer. The buffer is rope-backed (`ropey::Rope`) for efficient large-file edits.
 
-### Key Patterns
+**Workspace layer** — Shell operations (vault config, file tree, pane layout) run alongside editing. State changes are broadcast through `EventBus` using dot-namespaced event names (`buffer.changed`, `file.opened`). Components subscribe by name; nothing couples directly.
 
-- **Command Registry**: All user actions are named commands (e.g. `file.save`, `pane.file_tree.toggle`). Keybindings resolve to command names, never direct function calls.
-- **Event Bus**: State changes emit named events (`buffer.changed`, `file.opened`). Decouples components.
-- **Pure Vim State Machine**: VimEngine only receives Key and returns BufferCommand. Never touches the buffer directly.
-- **Dirty-flag lazy re-parse**: Markdown AST only re-parsed when buffer is marked dirty, not every frame.
-- **Rope-backed buffer**: Uses `ropey::Rope` for efficient large-file editing.
+**Markdown layer** — The buffer's text is parsed into a `Document` AST by `markdown.rs` only when the buffer's dirty flag is set. This AST drives both raw display and the future WYSIWYG rendering pass.
+
+**Render layer** — `Renderer` takes the output of `Editor::build_render_lines()` and the Markdown AST, lays out glyphs with `cosmic-text`, rasterizes them via `SwashCache`, and composites the scene through Vello onto a `wgpu` surface. It knows nothing about editing or Vim state.
 
 ## Rust Best Practices
 
@@ -68,3 +43,4 @@ Examples:
 - Write the failing test first — never write implementation code without a failing test that justifies it
 - Coverage targets apply to logic modules only; exclude UI rendering, main.rs wiring, and config I/O boilerplate
 - Before marking any task complete, run the test suite and confirm no regressions
+- Before marking any task complete, run `make format && make lint` and fix any warnings or errors
