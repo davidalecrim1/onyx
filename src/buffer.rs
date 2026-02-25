@@ -16,6 +16,7 @@ pub struct Buffer {
     rope: Rope,
     cursor: Cursor,
     selection: Option<Selection>,
+    scroll_offset: usize,
 }
 
 impl Buffer {
@@ -25,7 +26,28 @@ impl Buffer {
             rope: Rope::from_str(text),
             cursor: Cursor { line: 0, col: 0 },
             selection: None,
+            scroll_offset: 0,
         }
+    }
+
+    /// Returns the index of the topmost visible line.
+    pub fn scroll_offset(&self) -> usize { self.scroll_offset }
+
+    /// Clamps scroll_offset so the cursor stays within a 3-line margin from both edges.
+    /// `viewport_lines` is the number of fully visible lines in the editor pane.
+    pub fn clamp_scroll(&mut self, viewport_lines: usize) {
+        let margin = 3;
+        let line = self.cursor.line;
+        // Scroll up: cursor above top margin
+        if line < self.scroll_offset + margin {
+            self.scroll_offset = line.saturating_sub(margin);
+        }
+        // Scroll down: cursor too close to bottom
+        if line + margin >= self.scroll_offset + viewport_lines {
+            self.scroll_offset = line + margin + 1 - viewport_lines;
+        }
+        let max_offset = self.rope.len_lines().saturating_sub(1);
+        self.scroll_offset = self.scroll_offset.min(max_offset);
     }
 
     /// Returns a copy of the current cursor position.
@@ -297,5 +319,32 @@ mod tests {
     fn cursor_starts_at_zero() {
         let buf = Buffer::new("hello");
         assert_eq!(buf.cursor(), Cursor { line: 0, col: 0 });
+    }
+
+    #[test]
+    fn scroll_clamps_down() {
+        let text: String = (0..20).map(|i| format!("line{}\n", i)).collect();
+        let mut buf = Buffer::new(&text);
+        for _ in 0..10 {
+            buf.move_down();
+        }
+        buf.clamp_scroll(5);
+        // cursor=10, margin=3, viewport=5 → scroll_offset = 10 + 3 + 1 - 5 = 9
+        assert_eq!(buf.scroll_offset(), 9);
+    }
+
+    #[test]
+    fn scroll_clamps_up() {
+        let text: String = (0..20).map(|i| format!("line{}\n", i)).collect();
+        let mut buf = Buffer::new(&text);
+        for _ in 0..10 {
+            buf.move_down();
+        }
+        buf.clamp_scroll(5);
+        for _ in 0..9 {
+            buf.move_up();
+        }
+        buf.clamp_scroll(5);
+        assert_eq!(buf.scroll_offset(), 0);
     }
 }
