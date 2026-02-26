@@ -9,12 +9,6 @@ pub struct Rect {
     pub height: f32,
 }
 
-/// Result of splitting a rect into two halves.
-pub struct SplitPair {
-    pub left: Rect,
-    pub right: Rect,
-}
-
 impl Rect {
     /// Creates a rect from origin and size.
     pub fn new(x: f32, y: f32, width: f32, height: f32) -> Self {
@@ -23,6 +17,16 @@ impl Rect {
             y,
             width,
             height,
+        }
+    }
+
+    /// Converts a Taffy layout node to a Rect, accumulating parent offsets.
+    pub fn from_layout(layout: &taffy::Layout, parent_x: f32, parent_y: f32) -> Self {
+        Self {
+            x: parent_x + layout.location.x,
+            y: parent_y + layout.location.y,
+            width: layout.size.width,
+            height: layout.size.height,
         }
     }
 
@@ -46,42 +50,6 @@ impl Rect {
             y: self.y + amount,
             width: (self.width - 2.0 * amount).max(0.0),
             height: (self.height - 2.0 * amount).max(0.0),
-        }
-    }
-
-    /// Centers a child of `child_width x child_height` inside this rect.
-    pub fn center_child(&self, child_width: f32, child_height: f32) -> Self {
-        Self {
-            x: self.x + (self.width - child_width) / 2.0,
-            y: self.y + (self.height - child_height) / 2.0,
-            width: child_width,
-            height: child_height,
-        }
-    }
-
-    /// Splits vertically at `left_width` pixels from the left edge.
-    pub fn split_vertical(&self, left_width: f32) -> SplitPair {
-        SplitPair {
-            left: Rect::new(self.x, self.y, left_width, self.height),
-            right: Rect::new(
-                self.x + left_width,
-                self.y,
-                (self.width - left_width).max(0.0),
-                self.height,
-            ),
-        }
-    }
-
-    /// Splits horizontally at `top_height` pixels from the top edge.
-    pub fn split_horizontal(&self, top_height: f32) -> SplitPair {
-        SplitPair {
-            left: Rect::new(self.x, self.y, self.width, top_height),
-            right: Rect::new(
-                self.x,
-                self.y + top_height,
-                self.width,
-                (self.height - top_height).max(0.0),
-            ),
         }
     }
 
@@ -110,6 +78,8 @@ impl Rect {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use taffy::style_helpers::{length, zero, TaffyMaxContent};
+    use taffy::{Size, Style, TaffyTree};
 
     #[test]
     fn contains_inside_point() {
@@ -132,35 +102,50 @@ mod tests {
     }
 
     #[test]
-    fn center_child_is_centered() {
-        let parent = Rect::new(0.0, 0.0, 200.0, 100.0);
-        let child = parent.center_child(50.0, 30.0);
-        assert_eq!(child.x, 75.0);
-        assert_eq!(child.y, 35.0);
-        assert_eq!(child.width, 50.0);
-        assert_eq!(child.height, 30.0);
-    }
+    fn from_layout_accumulates_parent_offset() {
+        let mut tree: TaffyTree<()> = TaffyTree::new();
+        let child = tree
+            .new_leaf(Style {
+                size: Size {
+                    width: length(80.0),
+                    height: length(40.0),
+                },
+                ..Default::default()
+            })
+            .unwrap();
+        let root = tree
+            .new_with_children(
+                Style {
+                    padding: taffy::Rect {
+                        left: length(10.0),
+                        top: length(20.0),
+                        right: zero(),
+                        bottom: zero(),
+                    },
+                    size: Size {
+                        width: length(200.0),
+                        height: length(100.0),
+                    },
+                    ..Default::default()
+                },
+                &[child],
+            )
+            .unwrap();
 
-    #[test]
-    fn split_vertical_sums_to_parent() {
-        let parent = Rect::new(10.0, 20.0, 300.0, 100.0);
-        let split = parent.split_vertical(80.0);
+        tree.compute_layout(root, Size::MAX_CONTENT).unwrap();
 
-        assert_eq!(split.left.x, 10.0);
-        assert_eq!(split.left.width, 80.0);
-        assert_eq!(split.right.x, 90.0);
-        assert_eq!(split.right.width, 220.0);
-        assert_eq!(split.left.height, split.right.height);
-    }
+        let root_layout = tree.layout(root).unwrap();
+        let root_rect = Rect::from_layout(root_layout, 5.0, 3.0);
+        assert_eq!(root_rect.x, 5.0);
+        assert_eq!(root_rect.y, 3.0);
+        assert_eq!(root_rect.width, 200.0);
+        assert_eq!(root_rect.height, 100.0);
 
-    #[test]
-    fn split_horizontal_sums_to_parent() {
-        let parent = Rect::new(0.0, 0.0, 200.0, 300.0);
-        let split = parent.split_horizontal(100.0);
-
-        assert_eq!(split.left.y, 0.0);
-        assert_eq!(split.left.height, 100.0);
-        assert_eq!(split.right.y, 100.0);
-        assert_eq!(split.right.height, 200.0);
+        let child_layout = tree.layout(child).unwrap();
+        let child_rect = Rect::from_layout(child_layout, root_rect.x, root_rect.y);
+        assert_eq!(child_rect.x, 15.0);
+        assert_eq!(child_rect.y, 23.0);
+        assert_eq!(child_rect.width, 80.0);
+        assert_eq!(child_rect.height, 40.0);
     }
 }

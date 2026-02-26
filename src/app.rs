@@ -11,7 +11,7 @@ use crate::editor_view::EditorView;
 use crate::global_config::register_vault;
 use crate::gpu::GpuRenderer;
 use crate::text::TextSystem;
-use crate::ui::{DrawContext, HitSink, Theme};
+use crate::ui::{DrawContext, HitSink, Rect, Theme};
 use crate::vault::Vault;
 use crate::welcome::{WelcomeAction, WelcomeScreen};
 
@@ -133,12 +133,18 @@ impl ApplicationHandler for App<'_> {
                         theme: &self.theme,
                     };
 
+                    let bounds = Rect::new(0.0, 0.0, logical_width, logical_height);
+
                     match &self.screen {
                         AppScreen::Welcome(welcome) => {
-                            welcome.render(&mut ctx, &mut self.hits, logical_width, logical_height);
+                            if let Err(error) = welcome.render(&mut ctx, &mut self.hits, bounds) {
+                                log::error!("Welcome layout error: {error}");
+                            }
                         }
                         AppScreen::Editor(editor) => {
-                            editor.render(&mut ctx, logical_width, logical_height);
+                            if let Err(error) = editor.render(&mut ctx, bounds) {
+                                log::error!("Editor layout error: {error}");
+                            }
                         }
                     }
                 }
