@@ -4,7 +4,7 @@ use vello::peniko::{Brush, Color, Fill};
 use vello::Scene;
 
 const BUTTON_WIDTH: f32 = 160.0;
-const BUTTON_HEIGHT: f32 = 32.0;
+const BUTTON_HEIGHT: f32 = 40.0;
 const BUTTON_RADIUS: f64 = 5.0;
 const BUTTON_GAP: f32 = 10.0;
 
@@ -135,21 +135,6 @@ impl WelcomeScreen {
 
         draw_button(scene, text_system, self.create_button, "Create vault", true);
         draw_button(scene, text_system, self.open_button, "Open vault", false);
-
-        // Keyboard hint
-        let hint = "C · create    O · open";
-        let hint_metrics = measure_text(text_system, hint, 14.0);
-        draw_text(
-            scene,
-            text_system,
-            hint,
-            14.0,
-            (
-                (window_width - hint_metrics.width) / 2.0,
-                buttons_y + BUTTON_HEIGHT + 20.0,
-            ),
-            TEXT_SECONDARY,
-        );
     }
 
     /// Returns the action for a click at the given logical-pixel position.
@@ -188,14 +173,17 @@ fn draw_button(
         &button_rect,
     );
 
-    let label_metrics = measure_text(text_system, label, 18.0);
+    let font_size = 18.0;
+    let line_height = font_size * 1.2;
+    let cap_height = font_size * 0.7;
+    let label_metrics = measure_text(text_system, label, font_size);
     let label_x = rect.x + (rect.width - label_metrics.width) / 2.0;
-    let label_y = rect.y + (rect.height - label_metrics.height) / 2.0;
+    let label_y = rect.y + rect.height / 2.0 + cap_height / 2.0 - line_height;
     draw_text(
         scene,
         text_system,
         label,
-        18.0,
+        font_size,
         (label_x, label_y),
         TEXT_PRIMARY,
     );

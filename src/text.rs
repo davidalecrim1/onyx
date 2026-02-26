@@ -7,6 +7,7 @@ use vello::{Glyph, Scene};
 
 /// Width and height of a laid-out text run.
 #[derive(Debug, Clone, Copy)]
+#[allow(dead_code)]
 pub struct TextMetrics {
     pub width: f32,
     pub height: f32,
