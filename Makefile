@@ -16,7 +16,7 @@ check:
 	cargo check --all-targets
 
 format:
-	cargo fmt --all
+	cargo fmt
 
 clean:
 	cargo clean
