@@ -5,6 +5,7 @@ mod file_tree;
 mod global_config;
 mod gpu;
 mod text;
+mod ui;
 mod vault;
 mod vault_config;
 mod welcome;

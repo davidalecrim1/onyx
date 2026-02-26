@@ -7,8 +7,6 @@ use vello::{AaConfig, RenderParams, Renderer, RendererOptions, Scene};
 
 use crate::error::OnyxError;
 
-pub const BACKGROUND: Color = Color::from_rgb8(28, 28, 32);
-
 /// Tracks whether the wgpu surface is currently attached to a window.
 #[allow(dead_code)]
 enum SurfaceState<'window> {
@@ -99,7 +97,7 @@ impl<'window> GpuRenderer<'window> {
     }
 
     /// Renders a scene to the current surface.
-    pub fn render(&mut self, scene: &Scene) -> Result<(), OnyxError> {
+    pub fn render(&mut self, scene: &Scene, base_color: Color) -> Result<(), OnyxError> {
         let SurfaceState::Active {
             ref mut surface, ..
         } = self.state
@@ -124,7 +122,7 @@ impl<'window> GpuRenderer<'window> {
                 scene,
                 &surface.target_view,
                 &RenderParams {
-                    base_color: BACKGROUND,
+                    base_color,
                     width: surface.config.width,
                     height: surface.config.height,
                     antialiasing_method: AaConfig::Area,

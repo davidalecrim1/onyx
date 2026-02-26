@@ -11,6 +11,7 @@ use crate::editor_view::EditorView;
 use crate::global_config::register_vault;
 use crate::gpu::GpuRenderer;
 use crate::text::TextSystem;
+use crate::ui::{DrawContext, HitSink, Theme};
 use crate::vault::Vault;
 use crate::welcome::{WelcomeAction, WelcomeScreen};
 
@@ -24,6 +25,8 @@ enum AppScreen {
 pub struct App<'window> {
     gpu: GpuRenderer<'window>,
     text_system: TextSystem,
+    theme: Theme,
+    hits: HitSink,
     screen: AppScreen,
     window: Option<Arc<Window>>,
     cursor_position: (f32, f32),
@@ -35,6 +38,8 @@ impl<'window> App<'window> {
         Self {
             gpu: GpuRenderer::new(),
             text_system: TextSystem::new(),
+            theme: Theme::dark(),
+            hits: HitSink::new(),
             screen: AppScreen::Welcome(WelcomeScreen::new()),
             window: None,
             cursor_position: (0.0, 0.0),
@@ -119,22 +124,22 @@ impl ApplicationHandler for App<'_> {
                 let logical_height = physical.height as f32 / scale;
                 let mut logical_scene = Scene::new();
 
-                match &mut self.screen {
-                    AppScreen::Welcome(welcome) => {
-                        welcome.render(
-                            &mut logical_scene,
-                            &mut self.text_system,
-                            logical_width,
-                            logical_height,
-                        );
-                    }
-                    AppScreen::Editor(editor) => {
-                        editor.render(
-                            &mut logical_scene,
-                            &mut self.text_system,
-                            logical_width,
-                            logical_height,
-                        );
+                self.hits.clear();
+
+                {
+                    let mut ctx = DrawContext {
+                        scene: &mut logical_scene,
+                        text: &mut self.text_system,
+                        theme: &self.theme,
+                    };
+
+                    match &self.screen {
+                        AppScreen::Welcome(welcome) => {
+                            welcome.render(&mut ctx, &mut self.hits, logical_width, logical_height);
+                        }
+                        AppScreen::Editor(editor) => {
+                            editor.render(&mut ctx, logical_width, logical_height);
+                        }
                     }
                 }
 
@@ -142,7 +147,7 @@ impl ApplicationHandler for App<'_> {
                 let scale_transform = vello::kurbo::Affine::scale(scale as f64);
                 scene.append(&logical_scene, Some(scale_transform));
 
-                if let Err(error) = self.gpu.render(&scene) {
+                if let Err(error) = self.gpu.render(&scene, self.theme.background) {
                     log::error!("Render error: {error}");
                 }
 
@@ -163,10 +168,14 @@ impl ApplicationHandler for App<'_> {
                 button: MouseButton::Left,
                 ..
             } => {
-                if let AppScreen::Welcome(ref welcome) = self.screen {
-                    let action = welcome.hit_test(self.cursor_position.0, self.cursor_position.1);
-                    self.handle_vault_action(action);
-                }
+                let action = match self
+                    .hits
+                    .test(self.cursor_position.0, self.cursor_position.1)
+                {
+                    Some(id) => WelcomeAction::from_hit(id),
+                    None => WelcomeAction::None,
+                };
+                self.handle_vault_action(action);
             }
 
             WindowEvent::KeyboardInput {
