@@ -195,6 +195,7 @@ mod tests {
             scene: &mut scene,
             text: &mut text_system,
             theme: &theme,
+            cursor_position: (0.0, 0.0),
         };
         let mut hits = HitSink::new();
         let screen = WelcomeScreen::new();

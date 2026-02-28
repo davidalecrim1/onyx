@@ -9,14 +9,18 @@ use crate::text::draw_text;
 use crate::ui::{DrawContext, HitId, HitSink, Panel, Rect};
 use crate::vault::Vault;
 
-const SIDEBAR_WIDTH: f32 = 220.0;
+const SIDEBAR_WIDTH: f32 = 240.0;
 const FILE_ENTRY_HIT_BASE: u32 = 1000;
 const TAB_HIT_BASE: u32 = 2000;
 const TAB_CLOSE_HIT_BASE: u32 = 3000;
-const ROW_HEIGHT: f32 = 22.0;
-const TAB_BAR_HEIGHT: f32 = 32.0;
+const ROW_HEIGHT: f32 = 28.0;
+const TAB_BAR_HEIGHT: f32 = 36.0;
 const TAB_PADDING_H: f32 = 12.0;
 const TAB_CLOSE_SIZE: f32 = 16.0;
+const SIDEBAR_PADDING_LEFT: f32 = 12.0;
+const INDENT_PER_DEPTH: f32 = 20.0;
+const HEADER_FONT_SIZE: f32 = 12.0;
+const HEADER_HEIGHT: f32 = 32.0;
 
 /// Single open file with its loaded content.
 struct Tab {
@@ -190,74 +194,83 @@ impl EditorView {
 
         Panel::new(sidebar_rect, ctx.theme.surface).paint(ctx.scene);
 
-        let header_y = 16.0;
+        let header_label = self.vault_name.to_uppercase();
+        let header_text_y = sidebar_rect.y + (HEADER_HEIGHT - HEADER_FONT_SIZE) / 2.0;
         draw_text(
             ctx.scene,
             ctx.text,
-            &self.vault_name,
-            20.0,
-            (sidebar_rect.x + 12.0, sidebar_rect.y + header_y),
-            ctx.theme.text_primary,
+            &header_label,
+            HEADER_FONT_SIZE,
+            (sidebar_rect.x + SIDEBAR_PADDING_LEFT, header_text_y),
+            ctx.theme.text_secondary,
         );
 
         let flat = flatten_tree_filtered(&self.file_tree, &self.collapsed_dirs);
-        let mut entry_y = sidebar_rect.y + header_y + 36.0;
+        let mut entry_y = sidebar_rect.y + HEADER_HEIGHT;
         for (index, entry) in flat.iter().enumerate() {
             if entry_y > sidebar_rect.y + sidebar_rect.height {
                 break;
             }
 
+            let row_rect = Rect::new(sidebar_rect.x, entry_y, sidebar_rect.width, ROW_HEIGHT);
+
             let is_selected = self
                 .active_path()
                 .is_some_and(|selected| *selected == entry.path);
+            let is_hovered = row_rect.contains(ctx.cursor_position.0, ctx.cursor_position.1);
 
             if is_selected {
-                let row_rect = Rect::new(
-                    sidebar_rect.x,
-                    entry_y - 2.0,
-                    sidebar_rect.width,
-                    ROW_HEIGHT,
-                );
-                Panel::new(row_rect, ctx.theme.accent_dim).paint(ctx.scene);
+                Panel::new(row_rect, ctx.theme.surface_active).paint(ctx.scene);
+            } else if is_hovered {
+                Panel::new(row_rect, ctx.theme.surface_hover).paint(ctx.scene);
             }
 
-            let indent = sidebar_rect.x + 12.0 + entry.depth as f32 * 16.0;
-            let (prefix, color) = if entry.is_directory {
+            let indent =
+                sidebar_rect.x + SIDEBAR_PADDING_LEFT + entry.depth as f32 * INDENT_PER_DEPTH;
+            let text_y = entry_y + (ROW_HEIGHT - ctx.theme.typography.small_size) / 2.0;
+
+            if entry.is_directory {
                 let chevron = if self.collapsed_dirs.contains(&entry.path) {
-                    "\u{25b8} "
+                    "\u{25b8}"
                 } else {
-                    "\u{25be} "
+                    "\u{25be}"
                 };
-                (chevron, ctx.theme.text_secondary)
+                draw_text(
+                    ctx.scene,
+                    ctx.text,
+                    chevron,
+                    ctx.theme.typography.small_size,
+                    (indent, text_y),
+                    ctx.theme.text_secondary,
+                );
+
+                let name_x = indent + ctx.theme.typography.small_size;
+                let max_width = sidebar_rect.x + sidebar_rect.width - name_x - 8.0;
+                let truncated =
+                    truncate_to_width(&entry.name, max_width, ctx.theme.typography.small_size);
+                draw_text(
+                    ctx.scene,
+                    ctx.text,
+                    &truncated,
+                    ctx.theme.typography.small_size,
+                    (name_x, text_y),
+                    ctx.theme.text_secondary,
+                );
             } else {
-                ("\u{00b7} ", ctx.theme.text_primary)
-            };
+                let display_name = entry.name.strip_suffix(".md").unwrap_or(&entry.name);
+                let max_width = sidebar_rect.x + sidebar_rect.width - indent - 8.0;
+                let truncated =
+                    truncate_to_width(display_name, max_width, ctx.theme.typography.small_size);
+                draw_text(
+                    ctx.scene,
+                    ctx.text,
+                    &truncated,
+                    ctx.theme.typography.small_size,
+                    (indent, text_y),
+                    ctx.theme.text_primary,
+                );
+            }
 
-            let display_name = if !entry.is_directory {
-                entry.name.strip_suffix(".md").unwrap_or(&entry.name)
-            } else {
-                &entry.name
-            };
-            let label = format!("{prefix}{display_name}");
-
-            let max_width = sidebar_rect.x + sidebar_rect.width - indent - 8.0;
-            let truncated = truncate_to_width(&label, max_width, ctx.theme.typography.small_size);
-
-            draw_text(
-                ctx.scene,
-                ctx.text,
-                &truncated,
-                ctx.theme.typography.small_size,
-                (indent, entry_y),
-                color,
-            );
-
-            let row_rect = Rect::new(
-                sidebar_rect.x,
-                entry_y - 2.0,
-                sidebar_rect.width,
-                ROW_HEIGHT,
-            );
             hits.push(HitId(FILE_ENTRY_HIT_BASE + index as u32), row_rect);
 
             entry_y += ROW_HEIGHT;
@@ -285,18 +298,17 @@ impl EditorView {
 
                 let is_active = self.active_tab_index == Some(index);
                 let tab_rect = Rect::new(tab_x, tab_bar_rect.y, tab_width, TAB_BAR_HEIGHT);
+                let is_tab_hovered =
+                    tab_rect.contains(ctx.cursor_position.0, ctx.cursor_position.1);
+
                 let background = if is_active {
                     ctx.theme.background
+                } else if is_tab_hovered {
+                    ctx.theme.surface_hover
                 } else {
                     ctx.theme.surface
                 };
                 Panel::new(tab_rect, background).paint(ctx.scene);
-
-                if is_active {
-                    let indicator =
-                        Rect::new(tab_x, tab_bar_rect.y + TAB_BAR_HEIGHT - 2.0, tab_width, 2.0);
-                    Panel::new(indicator, ctx.theme.accent).paint(ctx.scene);
-                }
 
                 let text_y =
                     tab_bar_rect.y + (TAB_BAR_HEIGHT - ctx.theme.typography.small_size) / 2.0;
@@ -338,14 +350,14 @@ impl EditorView {
                 content_rect.width,
                 1.0,
             );
-            Panel::new(separator, ctx.theme.separator).paint(ctx.scene);
+            Panel::new(separator, ctx.theme.border).paint(ctx.scene);
 
             content_top += TAB_BAR_HEIGHT;
         }
 
         if let Some(active_tab) = self.active_tab_index.and_then(|index| self.tabs.get(index)) {
-            let padding_left = 12.0;
-            let padding_top = 16.0;
+            let padding_left = 16.0;
+            let padding_top = 20.0;
             let line_height =
                 ctx.theme.typography.body_size * ctx.theme.typography.line_height_factor;
             let mut line_y = content_top + padding_top;

@@ -7,4 +7,5 @@ pub struct DrawContext<'a> {
     pub scene: &'a mut Scene,
     pub text: &'a mut TextSystem,
     pub theme: &'a Theme,
+    pub cursor_position: (f32, f32),
 }

@@ -137,6 +137,7 @@ impl ApplicationHandler for App<'_> {
                         scene: &mut logical_scene,
                         text: &mut self.text_system,
                         theme: &self.theme,
+                        cursor_position: self.cursor_position,
                     };
 
                     let bounds = Rect::new(0.0, 0.0, logical_width, logical_height);

@@ -51,7 +51,7 @@ impl MyComponent {
 Key rules:
 - `paint()` consumes `self` — a component is built, configured, and painted once per frame.
 - `bounds: Rect` is always a required parameter, passed in by the parent.
-- `DrawContext` bundles `scene + text_system + theme` so paint signatures stay small.
+- `DrawContext` bundles `scene + text_system + theme + cursor_position` so paint signatures stay small.
 - Interactive components take `&mut HitSink` and register their clickable region.
 
 ## Screens as components
@@ -107,7 +107,10 @@ All colors and typography tokens live in `Theme`. Components read from `ctx.them
 pub struct Theme {
     pub background: Color,
     pub surface: Color,
+    pub surface_hover: Color,
+    pub surface_active: Color,
     pub separator: Color,
+    pub border: Color,
     pub accent: Color,
     pub accent_dim: Color,
     pub text_primary: Color,
@@ -149,6 +152,6 @@ assert!(hits.test(cx, cy).is_some());
 ## What we intentionally skip
 
 - **Element trait / layout engine** — not needed with fewer than 5 component types. If we reach 10+, consider a `trait Element { fn paint(&self, ctx, bounds); }`.
-- **Hover/focus states** — can be added to Button as a `hovered: bool` field later.
+- **Button hover/focus states** — Button-specific hover can be added as a `hovered: bool` field later. File tree and tab bar hover is implemented via `cursor_position` in `DrawContext`.
 - **Flexbox / auto-layout** — explicit Rect math is simpler and sufficient at this scale.
 - **Animation, async, arena allocators** — irrelevant at this codebase size.
