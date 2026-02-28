@@ -4,9 +4,10 @@ use vello::Scene;
 use winit::application::ApplicationHandler;
 use winit::event::{ElementState, KeyEvent, MouseButton, WindowEvent};
 use winit::event_loop::ActiveEventLoop;
-use winit::keyboard::Key;
+use winit::keyboard::{Key, ModifiersState};
 use winit::window::{Window, WindowId};
 
+use crate::action::resolve_action;
 use crate::editor_view::EditorView;
 use crate::global_config::register_vault;
 use crate::gpu::GpuRenderer;
@@ -30,6 +31,7 @@ pub struct App<'window> {
     screen: AppScreen,
     window: Option<Arc<Window>>,
     cursor_position: (f32, f32),
+    modifiers: ModifiersState,
 }
 
 impl<'window> App<'window> {
@@ -43,6 +45,7 @@ impl<'window> App<'window> {
             screen: AppScreen::Welcome(WelcomeScreen::new()),
             window: None,
             cursor_position: (0.0, 0.0),
+            modifiers: ModifiersState::empty(),
         }
     }
 
@@ -142,7 +145,7 @@ impl ApplicationHandler for App<'_> {
 
                     let bounds = Rect::new(0.0, 0.0, logical_width, logical_height);
 
-                    match &self.screen {
+                    match &mut self.screen {
                         AppScreen::Welcome(welcome) => {
                             if let Err(error) = welcome.render(&mut ctx, &mut self.hits, bounds) {
                                 log::error!("Welcome layout error: {error}");
@@ -176,6 +179,10 @@ impl ApplicationHandler for App<'_> {
                 self.cursor_position = (position.x as f32 / scale, position.y as f32 / scale);
             }
 
+            WindowEvent::ModifiersChanged(modifiers) => {
+                self.modifiers = modifiers.state();
+            }
+
             WindowEvent::MouseInput {
                 state: ElementState::Pressed,
                 button: MouseButton::Left,
@@ -196,6 +203,14 @@ impl ApplicationHandler for App<'_> {
                                 editor.handle_tab_click(hit_id);
                             } else if EditorView::is_file_hit(hit_id) {
                                 editor.handle_click(hit_id);
+                            } else if EditorView::is_content_hit(hit_id) {
+                                let font_size = self.theme.typography.body_size;
+                                editor.handle_content_click(
+                                    self.cursor_position.0,
+                                    self.cursor_position.1,
+                                    &mut self.text_system,
+                                    font_size,
+                                );
                             }
                         }
                     }
@@ -210,19 +225,22 @@ impl ApplicationHandler for App<'_> {
                         ..
                     },
                 ..
-            } => {
-                if let AppScreen::Welcome(_) = self.screen {
-                    match logical_key {
-                        Key::Character(ref ch) if ch.as_str() == "c" => {
-                            self.handle_vault_action(WelcomeAction::CreateVault);
-                        }
-                        Key::Character(ref ch) if ch.as_str() == "o" => {
-                            self.handle_vault_action(WelcomeAction::OpenVault);
-                        }
-                        _ => {}
+            } => match &mut self.screen {
+                AppScreen::Welcome(_) => match logical_key {
+                    Key::Character(ref ch) if ch.as_str() == "c" => {
+                        self.handle_vault_action(WelcomeAction::CreateVault);
+                    }
+                    Key::Character(ref ch) if ch.as_str() == "o" => {
+                        self.handle_vault_action(WelcomeAction::OpenVault);
+                    }
+                    _ => {}
+                },
+                AppScreen::Editor(editor) => {
+                    if let Some(action) = resolve_action(&logical_key, self.modifiers) {
+                        editor.handle_action(&action);
                     }
                 }
-            }
+            },
 
             _ => {}
         }

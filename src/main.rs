@@ -1,3 +1,4 @@
+mod action;
 mod app;
 mod editor_view;
 mod error;

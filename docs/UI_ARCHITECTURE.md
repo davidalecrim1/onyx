@@ -149,6 +149,24 @@ let (cx, cy) = bounds.center();
 assert!(hits.test(cx, cy).is_some());
 ```
 
+## Action system (command-palette-ready)
+
+All editor operations are modeled as variants of a flat `Action` enum in `src/action.rs`. Keybindings resolve `(key, modifiers) -> Option<Action>` via `resolve_action()`, and `EditorView::handle_action()` dispatches the action to the active tab.
+
+This design enables a future command palette to:
+1. Enumerate `Action` variants to build a searchable list.
+2. Display human-readable names for each action.
+3. Execute through the same `handle_action` dispatch path — no separate code path for palette-triggered vs keybinding-triggered actions.
+
+```
+Key press -> resolve_action(key, modifiers) -> Action -> editor.handle_action(&action)
+                                                  ^
+                                                  |
+                              Command palette -----+
+```
+
+Adding a new action requires: (1) add variant to `Action`, (2) add keybinding in `resolve_action`, (3) handle in `EditorView::handle_action`.
+
 ## What we intentionally skip
 
 - **Element trait / layout engine** — not needed with fewer than 5 component types. If we reach 10+, consider a `trait Element { fn paint(&self, ctx, bounds); }`.
