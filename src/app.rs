@@ -142,7 +142,7 @@ impl ApplicationHandler for App<'_> {
                             }
                         }
                         AppScreen::Editor(editor) => {
-                            if let Err(error) = editor.render(&mut ctx, bounds) {
+                            if let Err(error) = editor.render(&mut ctx, &mut self.hits, bounds) {
                                 log::error!("Editor layout error: {error}");
                             }
                         }
@@ -174,14 +174,21 @@ impl ApplicationHandler for App<'_> {
                 button: MouseButton::Left,
                 ..
             } => {
-                let action = match self
+                if let Some(hit_id) = self
                     .hits
                     .test(self.cursor_position.0, self.cursor_position.1)
                 {
-                    Some(id) => WelcomeAction::from_hit(id),
-                    None => WelcomeAction::None,
-                };
-                self.handle_vault_action(action);
+                    match &mut self.screen {
+                        AppScreen::Welcome(_) => {
+                            self.handle_vault_action(WelcomeAction::from_hit(hit_id));
+                        }
+                        AppScreen::Editor(editor) => {
+                            if EditorView::is_file_hit(hit_id) {
+                                editor.handle_click(hit_id);
+                            }
+                        }
+                    }
+                }
             }
 
             WindowEvent::KeyboardInput {
