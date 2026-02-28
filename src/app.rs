@@ -57,6 +57,9 @@ impl<'window> App<'window> {
                         Ok(vault) => {
                             let _ = register_vault(path);
                             self.screen = AppScreen::Editor(EditorView::new(&vault));
+                            if let Some(ref window) = self.window {
+                                window.set_maximized(true);
+                            }
                         }
                         Err(error) => log::error!("Failed to create vault: {error}"),
                     }
@@ -71,6 +74,9 @@ impl<'window> App<'window> {
                         Ok(vault) => {
                             let _ = register_vault(path);
                             self.screen = AppScreen::Editor(EditorView::new(&vault));
+                            if let Some(ref window) = self.window {
+                                window.set_maximized(true);
+                            }
                         }
                         Err(error) => log::error!("Failed to open vault: {error}"),
                     }
