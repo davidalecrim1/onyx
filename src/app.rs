@@ -183,7 +183,11 @@ impl ApplicationHandler for App<'_> {
                             self.handle_vault_action(WelcomeAction::from_hit(hit_id));
                         }
                         AppScreen::Editor(editor) => {
-                            if EditorView::is_file_hit(hit_id) {
+                            if EditorView::is_tab_close_hit(hit_id) {
+                                editor.handle_tab_close(hit_id);
+                            } else if EditorView::is_tab_hit(hit_id) {
+                                editor.handle_tab_click(hit_id);
+                            } else if EditorView::is_file_hit(hit_id) {
                                 editor.handle_click(hit_id);
                             }
                         }
