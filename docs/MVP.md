@@ -2,118 +2,76 @@
 
 ## Overview
 
-Onyx is a native, GPU-rendered Markdown editor built entirely in Rust. Inspired by Zed's minimalist and performance-first philosophy, it targets developers who want an Obsidian-like experience with Vim-first editing, mouseless navigation, and a pluggable architecture.
+Onyx is a native Markdown editor built with Tauri 2.0, React, and TypeScript. Inspired by Zed's minimalist philosophy, it targets developers who want an Obsidian-like experience with Vim-first editing and mouseless navigation.
 
 **Non-goals for MVP:** encryption, plugin loader, themes, mobile, Git sync.
 
 ## Section 1: Project Structure
 
-Single Rust workspace using `cargo init .` convention. Each crate has a focused responsibility.
+Tauri monorepo — Rust backend in `src-tauri/`, React frontend in `src/`.
 
 **Data flow:**
 
 ```
-User input → winit event loop (main.rs)
-  → Command registry (shell) → resolves named command
-  → Event bus (shell) → dispatches to subscribers
-  → Vim engine (vim) → buffer mutation
-  → Markdown parser (markdown) → AST diff
-  → WYSIWYG renderer (editor) → render commands
-  → GPU pipeline (render) → wgpu/Vello → screen
+User action (React UI)
+  → invoke("command_name", args)    [Tauri IPC]
+  → src-tauri/src/commands.rs       [Rust handler]
+  → vault / file_tree / global_config logic
+  → Result<T, String> → JSON → React state update
+  → Re-render
 ```
 
 ---
 
 ## Section 2: Technology Stack
 
-| Layer | Crate |
-|-------|-------|
-| Windowing | `winit` |
-| GPU | `wgpu` |
-| Rendering | `vello` |
-| Text layout | `cosmic-text` |
-| Layout | `taffy` |
-| Text buffer | `ropey` |
-| Markdown parsing | `pulldown-cmark` |
-| Terminal (pty) | `portable-pty` |
-| Config serialization | `serde` + `toml` |
+| Layer | Tool |
+|-------|------|
+| App shell | Tauri 2.0 |
+| Frontend | React 18 + TypeScript |
+| Bundler | Vite 5 |
+| Styling | Tailwind CSS (One Dark palette) |
+| Editor | CodeMirror 6 + vim mode |
+| Config serialization | serde + toml |
 
 ---
 
 ## Section 3: Vault System
 
-A vault is a directory opened in Onyx. Each vault is independent — it opens in its own window with its own file tree, tabs, and persisted state.
+A vault is a directory opened in Onyx. Each vault has its own file tree, tabs, and persisted state.
 
-**Vault config:** `.onyx/config.toml` inside the vault root stores:
-- Open tabs and their view modes (live preview vs raw)
-- Cursor positions per file
-- Pane layout (file tree position, terminal position)
+**Vault config:** `.onyx/config.toml` inside the vault root.
 
-**Global config:** `~/.config/onyx/config.toml` stores:
-- List of known vaults (name + path)
-- Last active vault(s)
+**Global config:** `~/.config/onyx/config.toml` stores known vaults and last active vault.
 
 ### First Launch
 
-1. Welcome screen appears — no file tree, no tabs
-2. Two actions: **Open Vault** (existing folder) or **Create Vault** (new folder)
-3. On selection, Onyx creates `.onyx/config.toml` and opens the main editor window
-4. Global config is written with the vault entry
+1. Welcome screen — two buttons: **Create Vault** and **Open Vault**
+2. Both open a native folder picker via `tauri-plugin-dialog`
+3. On selection, backend creates `.onyx/config.toml` and registers the vault in global config
+4. Frontend transitions to `EditorPage` with the vault path
 
 ### Subsequent Launches
 
 1. Onyx reads `~/.config/onyx/config.toml`
-2. Reopens last active vault(s) — restores window position, open tabs, cursor positions
-3. If a vault directory is missing (e.g. iCloud not synced), shows a non-blocking warning with options to locate or remove it
-
-### iCloud Sync
-
-No code required. Users point their vault at a directory inside `~/Library/Mobile Documents/` and the OS handles sync transparently.
-
-## Section 4: Editor Core
-
-### Buffer (`src/buffer/`)
-
-- Rope data structure via `ropey` for efficient insert/delete on large files
-- One buffer per open file, owned by the vault session
-- Cursor and selection state lives on the buffer
-
-
-## Section 5: WYSIWYG Rendering
-
-### Markdown Parser (`src/markdown/`)
-
-- `pulldown-cmark` for CommonMark-compliant parsing
-- On each edit, re-parse only the affected block — not the full document
-- AST diff produces minimal render updates
-
-### Editor Layer (`src/editor/`)
-
-Live preview mode — Markdown syntax is hidden and replaced with styled output. Raw syntax is revealed when the cursor enters a construct.
-
-| Element | Rendered as |
-|---------|-------------|
-| `# Heading` | Large styled text, `#` hidden |
-| `**bold**` | Bold text, `**` hidden |
-| `_italic_` | Italic text, `_` hidden |
-| `` `code` `` | Monospace highlighted span |
-| `code block` | Full block with background fill |
-| `[link](url)` | Styled link text, URL hidden |
-| `- item` | Bullet point, `-` hidden |
-
-### View Modes
-
-Each tab independently tracks its view mode, persisted in `.onyx/config.toml`:
-
-- **Live preview** — WYSIWYG, syntax hidden, cursor reveals raw on entry
-- **Raw mode** — plain Markdown source, syntax highlighting only
-
-Toggle button lives in the tab bar. No default keybinding for MVP.
+2. Reopens last active vault (future: restore open tabs and cursor positions)
 
 ---
 
-### File Tree
+## Section 4: Editor Core
 
-- Shows all files in the vault root recursively
-- MVP scope: `.md` files only
-- Supported operations: create file, rename file, delete file, move file
+- CodeMirror 6 as the editor engine
+- `@codemirror/lang-markdown` for Markdown language support
+- `@replit/codemirror-vim` for Vim keybindings
+- Files are loaded via `read_file` IPC command and saved via `write_file`
+- Cmd/Ctrl+S triggers save
+
+---
+
+## Section 5: File Tree
+
+- Recursive scan via `scan_file_tree` Rust function
+- Recognized extensions: `.md`, `.canvas`, `.pdf`, images, audio, video
+- Dot-directories excluded (e.g. `.onyx`, `.git`)
+- Sorted: directories first, then alphabetically within each group
+- Collapsible directories, active file highlighted

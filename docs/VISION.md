@@ -25,11 +25,12 @@ An Obsidian like Markdown editor built in Rust. Inspired by Zed minimalist and f
 - Audio notes support with transcribe feature.
 - A native app for mobile to leverage the files on ICloud.
 
-## Initially Techonology Stack
-| Layer | Tool | 
-| ----------- | ----------- | 
-| Windowing | winit |
-| GPU | wgpu | 
-| Rendering | Vello |
-| Text layout | cosmic-text |
-| Layout | taffy |
+## Technology Stack
+| Layer | Tool |
+| ----------- | ----------- |
+| App shell | Tauri 2.0 |
+| Frontend | React 18 + TypeScript |
+| Bundler | Vite 5 |
+| Styling | Tailwind CSS |
+| Editor | CodeMirror 6 + vim mode |
+| Backend | Rust (serde, toml, dirs-next) |
