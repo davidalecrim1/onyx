@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import CodeMirror, { EditorView, type ReactCodeMirrorRef } from "@uiw/react-codemirror";
 import { markdown } from "@codemirror/lang-markdown";
 import { vim } from "@replit/codemirror-vim";
+import { markdownDecorations } from "../extensions/markdownDecorations";
 
 const onyxTheme = EditorView.theme(
   {
@@ -35,7 +36,7 @@ export default function MarkdownEditor({ content, onChange }: Props) {
           ref={editorRef}
           value={content}
           onChange={onChange}
-          extensions={[vim(), markdown(), onyxTheme]}
+          extensions={[vim(), markdown(), onyxTheme, markdownDecorations]}
           theme="none"
           basicSetup={{
             lineNumbers: false,

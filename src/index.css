@@ -14,3 +14,38 @@ body,
   padding: 0;
   font-size: 18px;
 }
+
+/* Markdown decoration classes */
+.onyx-h1 { font-size: 2em; font-weight: 700; }
+.onyx-h2 { font-size: 1.6em; font-weight: 700; }
+.onyx-h3 { font-size: 1.35em; font-weight: 600; }
+.onyx-h4 { font-size: 1.15em; font-weight: 600; }
+.onyx-h5 { font-size: 1em; font-weight: 600; }
+.onyx-h6 { font-size: 0.9em; font-weight: 600; color: #a9afbc; }
+
+.onyx-bold   { font-weight: 700; }
+.onyx-italic { font-style: italic; }
+.onyx-strike { text-decoration: line-through; color: #a9afbc; }
+
+.onyx-link { color: #74ade8; text-decoration: underline; }
+
+.onyx-code-inline {
+  background-color: #22262e;
+  border-radius: 3px;
+  padding: 0 3px;
+  font-family: monospace;
+  font-size: 0.9em;
+}
+
+.cm-line.onyx-codeblock {
+  background-color: #22262e;
+  font-family: monospace;
+  font-size: 0.9em;
+}
+
+.onyx-hr {
+  border: none;
+  border-top: 1px solid #454a56;
+  margin: 0.5em 0;
+  width: 100%;
+}
