@@ -14,13 +14,15 @@ interface EditorState {
   tabs: Tab[];
   activeTabPath: string | null;
   fileContents: Record<string, string>;
+  dirtyPaths: Set<string>;
 }
 
 type EditorAction =
   | { type: "open_file"; path: string; name: string; content: string }
   | { type: "close_tab"; path: string }
   | { type: "activate_tab"; path: string }
-  | { type: "update_content"; path: string; content: string };
+  | { type: "update_content"; path: string; content: string }
+  | { type: "mark_saved"; path: string };
 
 function editorReducer(state: EditorState, action: EditorAction): EditorState {
   switch (action.type) {
@@ -42,15 +44,26 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
           ? (remaining[remaining.length - 1]?.path ?? null)
           : state.activeTabPath;
       const { [action.path]: _removed, ...rest } = state.fileContents;
-      return { tabs: remaining, activeTabPath: newActive, fileContents: rest };
+      const dirty = new Set(state.dirtyPaths);
+      dirty.delete(action.path);
+      return { tabs: remaining, activeTabPath: newActive, fileContents: rest, dirtyPaths: dirty };
     }
     case "activate_tab":
       return { ...state, activeTabPath: action.path };
-    case "update_content":
+    case "update_content": {
+      const dirty = new Set(state.dirtyPaths);
+      dirty.add(action.path);
       return {
         ...state,
         fileContents: { ...state.fileContents, [action.path]: action.content },
+        dirtyPaths: dirty,
       };
+    }
+    case "mark_saved": {
+      const dirty = new Set(state.dirtyPaths);
+      dirty.delete(action.path);
+      return { ...state, dirtyPaths: dirty };
+    }
   }
 }
 
@@ -62,6 +75,7 @@ export default function EditorPage({ vaultPath, vaultName, onClose }: Props) {
     tabs: [],
     activeTabPath: null,
     fileContents: {},
+    dirtyPaths: new Set(),
   });
 
   // Kept as a ref so the keyboard handler never needs to re-register when content changes.
@@ -148,6 +162,7 @@ export default function EditorPage({ vaultPath, vaultName, onClose }: Props) {
     if (content === undefined) return;
     try {
       await invoke("write_file", { path: state.activeTabPath, content });
+      dispatch({ type: "mark_saved", path: state.activeTabPath });
     } catch (err) {
       console.error("Failed to save file:", err);
     }

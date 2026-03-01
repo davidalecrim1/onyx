@@ -6,10 +6,11 @@ import { vim } from "@replit/codemirror-vim";
 const onyxTheme = EditorView.theme(
   {
     "&": { backgroundColor: "#282c33", color: "#dce0e5" },
+    "&.cm-focused": { outline: "none" },
     ".cm-content": { caretColor: "#74ade8" },
     ".cm-cursor": { borderLeftColor: "#74ade8" },
     ".cm-selectionBackground, ::selection": { backgroundColor: "#454a56" },
-    ".cm-activeLine": { backgroundColor: "#2f343e" },
+    ".cm-activeLine": { backgroundColor: "transparent" },
     ".cm-line": { color: "#dce0e5" },
   },
   { dark: true },
@@ -39,10 +40,10 @@ export default function MarkdownEditor({ content, onChange }: Props) {
           basicSetup={{
             lineNumbers: false,
             foldGutter: false,
-            highlightActiveLine: true,
+            highlightActiveLine: false,
             highlightSelectionMatches: true,
           }}
-          style={{ fontSize: "16px" }}
+          style={{ fontSize: "18px" }}
         />
       </div>
     </div>
