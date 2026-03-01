@@ -1,0 +1,10 @@
+{
+  "identifier": "default",
+  "description": "Default capabilities for Onyx",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "core:window:allow-maximize",
+    "dialog:allow-open"
+  ]
+}

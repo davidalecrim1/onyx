@@ -1,22 +1,28 @@
-.PHONY: build run test lint check clean format
+.PHONY: install dev build test lint check format clean
+
+install:
+	npm install
+
+dev:
+	npm run tauri dev
 
 build:
-	cargo build
-
-run:
-	cargo run
+	npm run tauri build
 
 test:
-	cargo test
+	cd src-tauri && cargo test
 
 lint:
-	cargo clippy --all-targets --all-features -- -D warnings
+	cd src-tauri && cargo clippy --all-targets --all-features -- -D warnings
+	npx eslint --ext .ts,.tsx src/
 
 check:
-	cargo check --all-targets
+	cd src-tauri && cargo check --all-targets
 
 format:
-	cargo fmt
+	cd src-tauri && cargo fmt
+	npx prettier --write src/
 
 clean:
-	cargo clean
+	cd src-tauri && cargo clean
+	rm -rf dist node_modules

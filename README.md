@@ -1,25 +1,27 @@
 # Onyx
 
-A keyboard-first Markdown editor built in Rust. Inspired by Zed's minimalist aesthetic, designed for performance and low memory usage.
-
-## Features
-
-- Native app — no Electron, no web runtime
-- Vim keybindings and mouseless workflow
-- Split panes, configurable layout
-- Integrated terminal
-- File encryption (AES-256)
-- Syncs via iCloud or OneDrive — no proprietary cloud
+A keyboard-first Markdown editor. Inspired by Zed's minimalist aesthetic — Vim-first editing, mouseless workflow, syncs via iCloud or OneDrive with no proprietary cloud.
 
 ## Stack
 
-| Layer | Crate |
+| Layer | Tool |
 |---|---|
-| Windowing | winit |
-| GPU | wgpu |
-| Rendering | vello |
-| Text layout | cosmic-text |
-| Layout | taffy |
+| App shell | Tauri 2.0 |
+| Frontend | React 18 + TypeScript |
+| Bundler | Vite 5 |
+| Styling | Tailwind CSS |
+| Editor | CodeMirror 6 + vim mode |
+| Backend | Rust (serde, toml, dirs-next) |
+
+## Development
+
+```sh
+make install   # npm install
+make dev       # tauri dev (hot reload)
+make test      # cargo test in src-tauri/
+make lint      # clippy + eslint
+make build     # production build
+```
 
 ## License
 
