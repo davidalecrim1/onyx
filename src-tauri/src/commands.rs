@@ -147,6 +147,17 @@ pub fn get_default_vault_dir() -> Result<String, String> {
     Ok(docs.to_string_lossy().to_string())
 }
 
+/// Moves a file or directory to a new parent directory, preserving the original name.
+#[tauri::command]
+pub fn move_file(source_path: String, target_dir: String) -> Result<(), String> {
+    let source = PathBuf::from(&source_path);
+    let file_name = source
+        .file_name()
+        .ok_or_else(|| "Invalid source path".to_string())?;
+    let destination = PathBuf::from(&target_dir).join(file_name);
+    std::fs::rename(&source, &destination).map_err(|e| e.to_string())
+}
+
 /// Returns all known vaults from the global config.
 #[tauri::command]
 pub fn get_known_vaults() -> Result<Vec<VaultEntry>, String> {

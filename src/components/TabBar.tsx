@@ -18,10 +18,10 @@ export default function TabBar({
   onTabClick,
   onTabClose,
 }: Props) {
-  if (tabs.length === 0) return null;
-
   return (
-    <div className="flex overflow-x-auto border-b border-surface bg-background px-2 pt-1.5">
+    <div
+      className={`flex overflow-x-auto border-b border-surface bg-background px-2 pt-1.5 ${tabs.length === 0 ? "h-9" : ""}`}
+    >
       {tabs.map((tab) => {
         const isActive = tab.path === activeTabPath;
         const isDirty = dirtyPaths.has(tab.path);
@@ -53,6 +53,8 @@ export default function TabBar({
           </div>
         );
       })}
+      {/* Fills remaining space; this is what the user actually drags to move the window. */}
+      <div data-tauri-drag-region className="flex-1 cursor-default" />
     </div>
   );
 }

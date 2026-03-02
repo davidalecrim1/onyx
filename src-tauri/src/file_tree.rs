@@ -53,15 +53,13 @@ fn scan_recursive(directory: &Path, depth: usize) -> Result<Vec<FileTreeEntry>, 
 
         if file_type.is_dir() {
             let children = scan_recursive(&path, depth + 1)?;
-            if !children.is_empty() {
-                entries.push(FileTreeEntry {
-                    name,
-                    path,
-                    is_directory: true,
-                    depth,
-                    children,
-                });
-            }
+            entries.push(FileTreeEntry {
+                name,
+                path,
+                is_directory: true,
+                depth,
+                children,
+            });
         } else if is_accepted_file(&name) {
             entries.push(FileTreeEntry {
                 name,

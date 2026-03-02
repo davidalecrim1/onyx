@@ -97,11 +97,14 @@ export default function EditorPage({
   const [newNoteName, setNewNoteName] = useState<string | null>(null);
   const [newFolderName, setNewFolderName] = useState<string | null>(null);
   const [sessionLoaded, setSessionLoaded] = useState(false);
+  const [selectedFolderPath, setSelectedFolderPath] = useState<string | null>(
+    null,
+  );
   const [state, dispatch] = useReducer(editorReducer, {
     tabs: [],
     activeTabPath: null,
     fileContents: {},
-    dirtyPaths: new Set(),
+    dirtyPaths: new Set<string>(),
   });
 
   // Kept as a ref so the keyboard handler never needs to re-register when content changes.
@@ -116,6 +119,11 @@ export default function EditorPage({
   useEffect(() => {
     fetchFileTree();
   }, [fetchFileTree]);
+
+  // Reset context folder when vault changes.
+  useEffect(() => {
+    setSelectedFolderPath(null);
+  }, [vaultPath]);
 
   // Restore session after the file tree is available.
   useEffect(() => {
@@ -171,42 +179,54 @@ export default function EditorPage({
     [],
   );
 
-  const handleNewNoteConfirm = useCallback(async () => {
-    if (newNoteName === null) return;
-    const name = newNoteName.trim() || "Untitled.md";
-    const finalName = name.endsWith(".md") ? name : `${name}.md`;
-    setNewNoteName(null);
-    try {
-      const filePath = await invoke<string>("create_file", {
-        vaultPath,
-        name: finalName,
-      });
-      fetchFileTree();
-      dispatch({
-        type: "open_file",
-        path: filePath,
-        name: finalName,
-        content: "",
-      });
-    } catch (err) {
-      console.error("Failed to create file:", err);
-    }
-  }, [newNoteName, vaultPath, fetchFileTree]);
+  const handleNewNoteConfirm = useCallback(
+    async (rawName: string) => {
+      const name = rawName.trim() || "Untitled.md";
+      const finalName = name.endsWith(".md") ? name : `${name}.md`;
+      setNewNoteName(null);
+      try {
+        const basePath = selectedFolderPath ?? vaultPath;
+        const filePath = await invoke<string>("create_file", {
+          vaultPath: basePath,
+          name: finalName,
+        });
+        fetchFileTree();
+        dispatch({
+          type: "open_file",
+          path: filePath,
+          name: finalName,
+          content: "",
+        });
+      } catch (err) {
+        console.error("Failed to create file:", err);
+      }
+    },
+    [vaultPath, selectedFolderPath, fetchFileTree],
+  );
 
-  const handleNewFolderConfirm = useCallback(async () => {
-    if (newFolderName === null) return;
-    const name = newFolderName.trim() || "Untitled";
-    setNewFolderName(null);
-    try {
-      await invoke("create_folder", { vaultPath, name });
-      fetchFileTree();
-    } catch (err) {
-      console.error("Failed to create folder:", err);
-    }
-  }, [newFolderName, vaultPath, fetchFileTree]);
+  const handleNewFolderConfirm = useCallback(
+    async (rawName: string) => {
+      const name = rawName.trim() || "Untitled";
+      setNewFolderName(null);
+      try {
+        const basePath = selectedFolderPath ?? vaultPath;
+        await invoke("create_folder", { vaultPath: basePath, name });
+        fetchFileTree();
+      } catch (err) {
+        console.error("Failed to create folder:", err);
+      }
+    },
+    [vaultPath, selectedFolderPath, fetchFileTree],
+  );
+
+  const handleFolderClick = useCallback((path: string) => {
+    setSelectedFolderPath(path);
+  }, []);
 
   const handleFileClick = useCallback(
     async (path: string) => {
+      const parentDir = path.substring(0, path.lastIndexOf("/"));
+      setSelectedFolderPath(parentDir || null);
       if (state.tabs.some((tab) => tab.path === path)) {
         dispatch({ type: "activate_tab", path });
         return;
@@ -220,6 +240,19 @@ export default function EditorPage({
       }
     },
     [state.tabs],
+  );
+
+  const handleFileDrop = useCallback(
+    async (sourcePath: string, targetDirPath: string) => {
+      try {
+        await invoke("move_file", { sourcePath, targetDir: targetDirPath });
+        fetchFileTree();
+        dispatch({ type: "close_tab", path: sourcePath });
+      } catch (err) {
+        console.error("Failed to move file:", err);
+      }
+    },
+    [fetchFileTree],
   );
 
   const handleContentChange = useCallback(
@@ -272,10 +305,9 @@ export default function EditorPage({
     <div className="flex h-full bg-background text-text-primary">
       <aside className="flex w-56 shrink-0 flex-col border-r border-surface">
         <div
-          data-tauri-drag-region
           className="flex items-center justify-between border-b border-surface px-3 py-2 pt-8"
         >
-          <span className="truncate text-sm font-medium text-text-primary">
+          <span data-tauri-drag-region className="flex-1 truncate text-sm font-medium text-text-primary">
             {vaultName}
           </span>
           <div className="ml-2 flex shrink-0 items-center gap-1">
@@ -324,7 +356,8 @@ export default function EditorPage({
                 value={newNoteName}
                 onChange={(e) => setNewNoteName(e.target.value)}
                 onKeyDown={(e) => {
-                  if (e.key === "Enter") handleNewNoteConfirm();
+                  if (e.key === "Enter")
+                    handleNewNoteConfirm(newNoteName ?? "");
                   if (e.key === "Escape") setNewNoteName(null);
                 }}
                 onBlur={() => setNewNoteName(null)}
@@ -340,7 +373,8 @@ export default function EditorPage({
                 value={newFolderName}
                 onChange={(e) => setNewFolderName(e.target.value)}
                 onKeyDown={(e) => {
-                  if (e.key === "Enter") handleNewFolderConfirm();
+                  if (e.key === "Enter")
+                    handleNewFolderConfirm(newFolderName ?? "");
                   if (e.key === "Escape") setNewFolderName(null);
                 }}
                 onBlur={() => setNewFolderName(null)}
@@ -355,7 +389,10 @@ export default function EditorPage({
             <FileTree
               entries={fileTree}
               activeFilePath={state.activeTabPath}
+              vaultPath={vaultPath}
               onFileClick={handleFileClick}
+              onFolderClick={handleFolderClick}
+              onFileDrop={handleFileDrop}
             />
           )}
         </div>

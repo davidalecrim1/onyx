@@ -9,7 +9,7 @@ mod vault_config;
 
 use commands::{
     create_file, create_folder, create_vault, get_default_vault_dir, get_file_tree,
-    get_known_vaults, load_vault_session_cmd, maximize_window, open_vault, read_file,
+    get_known_vaults, load_vault_session_cmd, maximize_window, move_file, open_vault, read_file,
     save_vault_session_cmd, write_file,
 };
 
@@ -31,6 +31,7 @@ fn main() {
             load_vault_session_cmd,
             save_vault_session_cmd,
             get_default_vault_dir,
+            move_file,
         ])
         .run(tauri::generate_context!())
         .expect("error running tauri app");
