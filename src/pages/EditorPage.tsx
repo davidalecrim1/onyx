@@ -3,11 +3,24 @@ import { invoke } from "@tauri-apps/api/core";
 import FileTree, { type FileTreeEntry } from "../components/FileTree";
 import TabBar, { type Tab } from "../components/TabBar";
 import MarkdownEditor from "../components/MarkdownEditor";
+import VaultSwitcher from "../components/VaultSwitcher";
+
+interface VaultEntry {
+  name: string;
+  path: string;
+}
+
+interface VaultSession {
+  open_tabs: string[];
+  active_tab: string | null;
+}
 
 interface Props {
   vaultPath: string;
   vaultName: string;
+  knownVaults: VaultEntry[];
   onClose: () => void;
+  onSwitchVault: (path: string, name: string) => void;
 }
 
 interface EditorState {
@@ -67,10 +80,17 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
   }
 }
 
-export default function EditorPage({ vaultPath, vaultName, onClose }: Props) {
+export default function EditorPage({
+  vaultPath,
+  vaultName,
+  knownVaults,
+  onClose,
+  onSwitchVault,
+}: Props) {
   const [fileTree, setFileTree] = useState<FileTreeEntry[]>([]);
   const [treeError, setTreeError] = useState<string | null>(null);
   const [newNoteName, setNewNoteName] = useState<string | null>(null);
+  const [sessionLoaded, setSessionLoaded] = useState(false);
   const [state, dispatch] = useReducer(editorReducer, {
     tabs: [],
     activeTabPath: null,
@@ -90,6 +110,39 @@ export default function EditorPage({ vaultPath, vaultName, onClose }: Props) {
   useEffect(() => {
     fetchFileTree();
   }, [fetchFileTree]);
+
+  // Restore session after the file tree is available.
+  useEffect(() => {
+    if (sessionLoaded || fileTree.length === 0) return;
+
+    invoke<VaultSession>("load_vault_session_cmd", { vaultPath })
+      .then(async (session) => {
+        for (const tabPath of session.open_tabs) {
+          try {
+            const content = await invoke<string>("read_file", { path: tabPath });
+            const name = tabPath.split("/").pop() ?? tabPath;
+            dispatch({ type: "open_file", path: tabPath, name, content });
+          } catch {
+            // File may have been deleted since last session — skip it.
+          }
+        }
+        if (session.active_tab) {
+          dispatch({ type: "activate_tab", path: session.active_tab });
+        }
+        setSessionLoaded(true);
+      })
+      .catch(() => setSessionLoaded(true));
+  }, [vaultPath, fileTree, sessionLoaded]);
+
+  // Persist session whenever tabs or active tab changes (after initial load).
+  useEffect(() => {
+    if (!sessionLoaded) return;
+    invoke("save_vault_session_cmd", {
+      vaultPath,
+      openTabs: state.tabs.map((tab) => tab.path),
+      activeTab: state.activeTabPath,
+    }).catch((err) => console.error("Failed to save session:", err));
+  }, [vaultPath, sessionLoaded, state.tabs, state.activeTabPath]);
 
   const handleNewNoteOpen = useCallback(() => {
     setNewNoteName("Untitled.md");
@@ -235,6 +288,12 @@ export default function EditorPage({ vaultPath, vaultName, onClose }: Props) {
             />
           )}
         </div>
+        <VaultSwitcher
+          currentVaultName={vaultName}
+          currentVaultPath={vaultPath}
+          vaults={knownVaults}
+          onSwitch={onSwitchVault}
+        />
       </aside>
 
       <div className="flex flex-1 flex-col overflow-hidden">

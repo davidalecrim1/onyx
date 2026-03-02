@@ -10,6 +10,33 @@ pub struct VaultConfig {
     pub name: String,
 }
 
+/// UI session state stored at `<vault>/.onyx/session.toml`.
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
+pub struct VaultSession {
+    #[serde(default)]
+    pub open_tabs: Vec<String>,
+    pub active_tab: Option<String>,
+}
+
+/// Loads the session from `<vault>/.onyx/session.toml`, returning defaults if absent.
+pub fn load_vault_session(vault_path: &Path) -> Result<VaultSession, OnyxError> {
+    let path = vault_path.join(".onyx/session.toml");
+    if !path.exists() {
+        return Ok(VaultSession::default());
+    }
+    let contents = std::fs::read_to_string(&path)?;
+    Ok(toml::from_str(&contents)?)
+}
+
+/// Persists the session to `<vault>/.onyx/session.toml`.
+pub fn save_vault_session(vault_path: &Path, session: &VaultSession) -> Result<(), OnyxError> {
+    let onyx_dir = vault_path.join(".onyx");
+    std::fs::create_dir_all(&onyx_dir)?;
+    let contents = toml::to_string_pretty(session)?;
+    std::fs::write(onyx_dir.join("session.toml"), contents)?;
+    Ok(())
+}
+
 /// Creates the `.onyx/` directory and default config file if they don't exist.
 pub fn ensure_vault_config(vault_path: &Path) -> Result<VaultConfig, OnyxError> {
     let onyx_dir = vault_path.join(".onyx");
@@ -62,5 +89,34 @@ mod tests {
         let second = ensure_vault_config(&vault_path).unwrap();
 
         assert_eq!(first, second);
+    }
+
+    #[test]
+    fn load_vault_session_returns_default_when_missing() {
+        let temp = TempDir::new().unwrap();
+        let vault_path = temp.path().join("vault");
+        std::fs::create_dir_all(&vault_path).unwrap();
+
+        let session = load_vault_session(&vault_path).unwrap();
+
+        assert!(session.open_tabs.is_empty());
+        assert!(session.active_tab.is_none());
+    }
+
+    #[test]
+    fn vault_session_round_trip() {
+        let temp = TempDir::new().unwrap();
+        let vault_path = temp.path().join("vault");
+        std::fs::create_dir_all(&vault_path).unwrap();
+
+        let session = VaultSession {
+            open_tabs: vec!["/vault/a.md".to_string(), "/vault/b.md".to_string()],
+            active_tab: Some("/vault/b.md".to_string()),
+        };
+
+        save_vault_session(&vault_path, &session).unwrap();
+        let loaded = load_vault_session(&vault_path).unwrap();
+
+        assert_eq!(session, loaded);
     }
 }

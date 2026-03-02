@@ -11,16 +11,26 @@ interface Props {
   onVaultOpened: (vaultPath: string, vaultName: string) => void;
 }
 
+async function getDefaultVaultDir(): Promise<string | undefined> {
+  try {
+    return await invoke<string>("get_default_vault_dir");
+  } catch {
+    return undefined;
+  }
+}
+
 export default function WelcomePage({ onVaultOpened }: Props) {
   const [error, setError] = useState<string | null>(null);
 
   async function handleCreateVault() {
     setError(null);
     try {
+      const defaultPath = await getDefaultVaultDir();
       const selected = await open({
         directory: true,
         multiple: false,
         title: "Choose folder for new vault",
+        defaultPath,
       });
       if (!selected) return;
       const vault = await invoke<VaultInfo>("create_vault", { path: selected });
@@ -34,10 +44,12 @@ export default function WelcomePage({ onVaultOpened }: Props) {
   async function handleOpenVault() {
     setError(null);
     try {
+      const defaultPath = await getDefaultVaultDir();
       const selected = await open({
         directory: true,
         multiple: false,
         title: "Open vault",
+        defaultPath,
       });
       if (!selected) return;
       const vault = await invoke<VaultInfo>("open_vault", { path: selected });

@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 use crate::file_tree::{scan_file_tree, FileTreeEntry};
 use crate::global_config::{load_global_config, register_vault};
 use crate::vault::Vault;
+use crate::vault_config::{load_vault_session, save_vault_session, VaultSession};
 
 /// Serializable vault summary returned to the frontend.
 #[derive(Debug, Serialize, Deserialize)]
@@ -96,6 +97,43 @@ pub fn create_file(vault_path: String, name: String) -> Result<String, String> {
     let path = PathBuf::from(&vault_path).join(&name);
     std::fs::write(&path, "").map_err(|e| e.to_string())?;
     Ok(path.to_string_lossy().to_string())
+}
+
+/// Loads the saved session (open tabs, active tab) for the given vault.
+#[tauri::command]
+pub fn load_vault_session_cmd(vault_path: String) -> Result<VaultSession, String> {
+    load_vault_session(Path::new(&vault_path)).map_err(|e| e.to_string())
+}
+
+/// Persists the session (open tabs, active tab) for the given vault.
+#[tauri::command]
+pub fn save_vault_session_cmd(
+    vault_path: String,
+    open_tabs: Vec<String>,
+    active_tab: Option<String>,
+) -> Result<(), String> {
+    let session = VaultSession { open_tabs, active_tab };
+    save_vault_session(Path::new(&vault_path), &session).map_err(|e| e.to_string())
+}
+
+/// Returns the recommended default directory for storing new vaults.
+/// On macOS this is the app's iCloud Drive container when available,
+/// otherwise falls back to `~/Documents/Onyx`.
+#[tauri::command]
+pub fn get_default_vault_dir() -> Result<String, String> {
+    #[cfg(target_os = "macos")]
+    {
+        if let Some(home) = dirs_next::home_dir() {
+            let icloud = home.join("Library/Mobile Documents/iCloud~md~onyx/Documents");
+            if icloud.exists() {
+                return Ok(icloud.to_string_lossy().to_string());
+            }
+        }
+    }
+    let docs = dirs_next::document_dir()
+        .ok_or_else(|| "Cannot determine Documents dir".to_string())?
+        .join("Onyx");
+    Ok(docs.to_string_lossy().to_string())
 }
 
 /// Returns all known vaults from the global config.
