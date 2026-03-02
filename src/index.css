@@ -16,18 +16,47 @@ body,
 }
 
 /* Markdown decoration classes */
-.onyx-h1 { font-size: 2em; font-weight: 700; }
-.onyx-h2 { font-size: 1.6em; font-weight: 700; }
-.onyx-h3 { font-size: 1.35em; font-weight: 600; }
-.onyx-h4 { font-size: 1.15em; font-weight: 600; }
-.onyx-h5 { font-size: 1em; font-weight: 600; }
-.onyx-h6 { font-size: 0.9em; font-weight: 600; color: #a9afbc; }
+.onyx-h1 {
+  font-size: 2em;
+  font-weight: 700;
+}
+.onyx-h2 {
+  font-size: 1.6em;
+  font-weight: 700;
+}
+.onyx-h3 {
+  font-size: 1.35em;
+  font-weight: 600;
+}
+.onyx-h4 {
+  font-size: 1.15em;
+  font-weight: 600;
+}
+.onyx-h5 {
+  font-size: 1em;
+  font-weight: 600;
+}
+.onyx-h6 {
+  font-size: 0.9em;
+  font-weight: 600;
+  color: #a9afbc;
+}
 
-.onyx-bold   { font-weight: 700; }
-.onyx-italic { font-style: italic; }
-.onyx-strike { text-decoration: line-through; color: #a9afbc; }
+.onyx-bold {
+  font-weight: 700;
+}
+.onyx-italic {
+  font-style: italic;
+}
+.onyx-strike {
+  text-decoration: line-through;
+  color: #a9afbc;
+}
 
-.onyx-link { color: #74ade8; text-decoration: underline; }
+.onyx-link {
+  color: #74ade8;
+  text-decoration: underline;
+}
 
 .onyx-code-inline {
   background-color: #22262e;

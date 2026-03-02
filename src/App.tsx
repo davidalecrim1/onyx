@@ -31,15 +31,18 @@ export default function App() {
     setView({ kind: "editor", vaultPath, vaultName });
   }
 
-  const handleSwitchVault = useCallback(async (path: string, name: string) => {
-    try {
-      await invoke("open_vault", { path });
-    } catch {
-      // Already registered — open_vault is idempotent.
-    }
-    refreshKnownVaults();
-    setView({ kind: "editor", vaultPath: path, vaultName: name });
-  }, [refreshKnownVaults]);
+  const handleSwitchVault = useCallback(
+    async (path: string, name: string) => {
+      try {
+        await invoke("open_vault", { path });
+      } catch {
+        // Already registered — open_vault is idempotent.
+      }
+      refreshKnownVaults();
+      setView({ kind: "editor", vaultPath: path, vaultName: name });
+    },
+    [refreshKnownVaults],
+  );
 
   if (view.kind === "editor") {
     return (
@@ -53,9 +56,5 @@ export default function App() {
     );
   }
 
-  return (
-    <WelcomePage
-      onVaultOpened={handleVaultOpened}
-    />
-  );
+  return <WelcomePage onVaultOpened={handleVaultOpened} />;
 }

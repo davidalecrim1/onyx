@@ -24,7 +24,10 @@ export default function VaultSwitcher({
   useEffect(() => {
     if (!open) return;
     function handleOutsideClick(e: MouseEvent) {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(e.target as Node)
+      ) {
         setOpen(false);
       }
     }
@@ -56,7 +59,9 @@ export default function VaultSwitcher({
               {vault.path === currentVaultPath && (
                 <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-accent" />
               )}
-              <span className={`truncate ${vault.path === currentVaultPath ? "ml-0" : "ml-3.5"}`}>
+              <span
+                className={`truncate ${vault.path === currentVaultPath ? "ml-0" : "ml-3.5"}`}
+              >
                 {vault.name}
               </span>
             </button>

@@ -8,9 +8,9 @@ mod vault;
 mod vault_config;
 
 use commands::{
-    create_file, create_vault, get_default_vault_dir, get_file_tree, get_known_vaults,
-    load_vault_session_cmd, maximize_window, open_vault, read_file, save_vault_session_cmd,
-    write_file,
+    create_file, create_folder, create_vault, get_default_vault_dir, get_file_tree,
+    get_known_vaults, load_vault_session_cmd, maximize_window, open_vault, read_file,
+    save_vault_session_cmd, write_file,
 };
 
 fn main() {
@@ -27,6 +27,7 @@ fn main() {
             get_known_vaults,
             maximize_window,
             create_file,
+            create_folder,
             load_vault_session_cmd,
             save_vault_session_cmd,
             get_default_vault_dir,

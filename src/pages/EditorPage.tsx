@@ -59,7 +59,12 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
       const { [action.path]: _removed, ...rest } = state.fileContents;
       const dirty = new Set(state.dirtyPaths);
       dirty.delete(action.path);
-      return { tabs: remaining, activeTabPath: newActive, fileContents: rest, dirtyPaths: dirty };
+      return {
+        tabs: remaining,
+        activeTabPath: newActive,
+        fileContents: rest,
+        dirtyPaths: dirty,
+      };
     }
     case "activate_tab":
       return { ...state, activeTabPath: action.path };
@@ -90,6 +95,7 @@ export default function EditorPage({
   const [fileTree, setFileTree] = useState<FileTreeEntry[]>([]);
   const [treeError, setTreeError] = useState<string | null>(null);
   const [newNoteName, setNewNoteName] = useState<string | null>(null);
+  const [newFolderName, setNewFolderName] = useState<string | null>(null);
   const [sessionLoaded, setSessionLoaded] = useState(false);
   const [state, dispatch] = useReducer(editorReducer, {
     tabs: [],
@@ -119,7 +125,9 @@ export default function EditorPage({
       .then(async (session) => {
         for (const tabPath of session.open_tabs) {
           try {
-            const content = await invoke<string>("read_file", { path: tabPath });
+            const content = await invoke<string>("read_file", {
+              path: tabPath,
+            });
             const name = tabPath.split("/").pop() ?? tabPath;
             dispatch({ type: "open_file", path: tabPath, name, content });
           } catch {
@@ -148,9 +156,20 @@ export default function EditorPage({
     setNewNoteName("Untitled.md");
   }, []);
 
+  const handleNewFolderOpen = useCallback(() => {
+    setNewFolderName("Untitled");
+  }, []);
+
   const newNoteInputCallbackRef = useCallback((el: HTMLInputElement | null) => {
     if (el) el.select();
   }, []);
+
+  const newFolderInputCallbackRef = useCallback(
+    (el: HTMLInputElement | null) => {
+      if (el) el.select();
+    },
+    [],
+  );
 
   const handleNewNoteConfirm = useCallback(async () => {
     if (newNoteName === null) return;
@@ -173,6 +192,18 @@ export default function EditorPage({
       console.error("Failed to create file:", err);
     }
   }, [newNoteName, vaultPath, fetchFileTree]);
+
+  const handleNewFolderConfirm = useCallback(async () => {
+    if (newFolderName === null) return;
+    const name = newFolderName.trim() || "Untitled";
+    setNewFolderName(null);
+    try {
+      await invoke("create_folder", { vaultPath, name });
+      fetchFileTree();
+    } catch (err) {
+      console.error("Failed to create folder:", err);
+    }
+  }, [newFolderName, vaultPath, fetchFileTree]);
 
   const handleFileClick = useCallback(
     async (path: string) => {
@@ -240,7 +271,10 @@ export default function EditorPage({
   return (
     <div className="flex h-full bg-background text-text-primary">
       <aside className="flex w-56 shrink-0 flex-col border-r border-surface">
-        <div data-tauri-drag-region className="flex items-center justify-between border-b border-surface px-3 py-2 pt-8">
+        <div
+          data-tauri-drag-region
+          className="flex items-center justify-between border-b border-surface px-3 py-2 pt-8"
+        >
           <span className="truncate text-sm font-medium text-text-primary">
             {vaultName}
           </span>
@@ -251,6 +285,27 @@ export default function EditorPage({
               aria-label="New note"
             >
               +
+            </button>
+            <button
+              onClick={handleNewFolderOpen}
+              className="rounded px-1 text-text-secondary transition-colors hover:text-text-primary"
+              aria-label="New folder"
+            >
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 14 14"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+                aria-hidden="true"
+              >
+                <path
+                  d="M1 3.5C1 2.94772 1.44772 2.5 2 2.5H5.5L7 4H12C12.5523 4 13 4.44772 13 5V10.5C13 11.0523 12.5523 11.5 12 11.5H2C1.44772 11.5 1 11.0523 1 10.5V3.5Z"
+                  stroke="currentColor"
+                  strokeWidth="1.2"
+                  strokeLinejoin="round"
+                />
+              </svg>
             </button>
             <button
               onClick={onClose}
@@ -273,6 +328,22 @@ export default function EditorPage({
                   if (e.key === "Escape") setNewNoteName(null);
                 }}
                 onBlur={() => setNewNoteName(null)}
+                className="w-full rounded bg-surface px-2 py-0.5 text-sm text-text-primary outline-none ring-1 ring-accent"
+                spellCheck={false}
+              />
+            </div>
+          )}
+          {newFolderName !== null && (
+            <div className="px-3 py-1">
+              <input
+                ref={newFolderInputCallbackRef}
+                value={newFolderName}
+                onChange={(e) => setNewFolderName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleNewFolderConfirm();
+                  if (e.key === "Escape") setNewFolderName(null);
+                }}
+                onBlur={() => setNewFolderName(null)}
                 className="w-full rounded bg-surface px-2 py-0.5 text-sm text-text-primary outline-none ring-1 ring-accent"
                 spellCheck={false}
               />

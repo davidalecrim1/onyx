@@ -99,6 +99,14 @@ pub fn create_file(vault_path: String, name: String) -> Result<String, String> {
     Ok(path.to_string_lossy().to_string())
 }
 
+/// Creates a new empty directory inside the vault and returns its absolute path.
+#[tauri::command]
+pub fn create_folder(vault_path: String, name: String) -> Result<String, String> {
+    let path = PathBuf::from(&vault_path).join(&name);
+    std::fs::create_dir(&path).map_err(|e| e.to_string())?;
+    Ok(path.to_string_lossy().to_string())
+}
+
 /// Loads the saved session (open tabs, active tab) for the given vault.
 #[tauri::command]
 pub fn load_vault_session_cmd(vault_path: String) -> Result<VaultSession, String> {
@@ -112,7 +120,10 @@ pub fn save_vault_session_cmd(
     open_tabs: Vec<String>,
     active_tab: Option<String>,
 ) -> Result<(), String> {
-    let session = VaultSession { open_tabs, active_tab };
+    let session = VaultSession {
+        open_tabs,
+        active_tab,
+    };
     save_vault_session(Path::new(&vault_path), &session).map_err(|e| e.to_string())
 }
 

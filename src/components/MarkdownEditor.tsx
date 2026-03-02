@@ -1,5 +1,8 @@
 import { useEffect, useRef } from "react";
-import CodeMirror, { EditorView, type ReactCodeMirrorRef } from "@uiw/react-codemirror";
+import CodeMirror, {
+  EditorView,
+  type ReactCodeMirrorRef,
+} from "@uiw/react-codemirror";
 import { markdown } from "@codemirror/lang-markdown";
 import { vim } from "@replit/codemirror-vim";
 import { markdownDecorations } from "../extensions/markdownDecorations";
@@ -43,6 +46,7 @@ export default function MarkdownEditor({ content, onChange }: Props) {
             foldGutter: false,
             highlightActiveLine: false,
             highlightSelectionMatches: true,
+            syntaxHighlighting: false,
           }}
           style={{ fontSize: "18px" }}
         />
