@@ -61,7 +61,7 @@ export default function WelcomePage({ onVaultOpened }: Props) {
   }
 
   return (
-    <div className="flex h-full flex-col items-center justify-center bg-background text-text-primary">
+    <div data-tauri-drag-region className="flex h-full flex-col items-center justify-center bg-background pt-7 text-text-primary">
       <h1 className="mb-2 text-4xl font-semibold tracking-tight">Onyx</h1>
       <p className="mb-10 text-text-secondary">
         Your personal markdown workspace
