@@ -9,6 +9,11 @@ import { vim } from "@replit/codemirror-vim";
 import { invoke } from "@tauri-apps/api/core";
 import { markdownDecorations } from "../extensions/markdownDecorations";
 import { tagAutocomplete } from "../extensions/tagAutocomplete";
+import {
+  setWikilinkConfig,
+  wikilinkConfigField,
+  wikilinkViewPlugin,
+} from "../extensions/wikilinkDecorations";
 
 const onyxTheme = EditorView.theme(
   {
@@ -38,6 +43,8 @@ interface Props {
   filePath: string | null;
   onRename: (newStem: string) => void;
   vaultPath: string | null;
+  onWikilinkOpen: (path: string) => void;
+  onWikilinkCreate: (linkTarget: string) => void;
 }
 
 export default function MarkdownEditor({
@@ -47,6 +54,8 @@ export default function MarkdownEditor({
   filePath,
   onRename,
   vaultPath,
+  onWikilinkOpen,
+  onWikilinkCreate,
 }: Props) {
   const editorRef = useRef<ReactCodeMirrorRef>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -59,6 +68,18 @@ export default function MarkdownEditor({
       .then(setTags)
       .catch(() => {});
   }, [vaultPath]);
+
+  useEffect(() => {
+    const view = editorRef.current?.view;
+    if (!view || !vaultPath) return;
+    view.dispatch({
+      effects: setWikilinkConfig.of({
+        vaultPath,
+        onOpen: onWikilinkOpen,
+        onCreate: onWikilinkCreate,
+      }),
+    });
+  }, [vaultPath, onWikilinkOpen, onWikilinkCreate]);
 
   const fileStem = filePath
     ? (filePath
@@ -109,6 +130,8 @@ export default function MarkdownEditor({
       onyxTheme,
       markdownDecorations,
       tagAutocomplete(tags),
+      wikilinkConfigField,
+      wikilinkViewPlugin,
     ],
     [vimMode, tags],
   );

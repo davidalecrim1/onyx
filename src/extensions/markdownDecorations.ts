@@ -21,6 +21,59 @@ class HorizontalRuleWidget extends WidgetType {
   }
 }
 
+class BulletWidget extends WidgetType {
+  toDOM(): HTMLElement {
+    const span = document.createElement("span");
+    span.className = "onyx-bullet";
+    span.textContent = "•";
+    return span;
+  }
+
+  eq(): boolean {
+    return true;
+  }
+}
+
+class CheckboxWidget extends WidgetType {
+  constructor(
+    private readonly view: EditorView,
+    private readonly checked: boolean,
+  ) {
+    super();
+  }
+
+  toDOM(): HTMLElement {
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.className = "onyx-task-checkbox";
+    checkbox.checked = this.checked;
+    checkbox.addEventListener("click", (event) => {
+      event.preventDefault();
+      const pos = this.view.posAtDOM(checkbox);
+      const line = this.view.state.doc.lineAt(pos);
+      const lineText = this.view.state.doc.sliceString(line.from, line.to);
+      const uncheckedMatch = lineText.match(/\[ \]/);
+      const checkedMatch = lineText.match(/\[x\]|\[X\]/);
+      if (uncheckedMatch && uncheckedMatch.index !== undefined) {
+        const from = line.from + uncheckedMatch.index;
+        this.view.dispatch({
+          changes: { from, to: from + 3, insert: "[x]" },
+        });
+      } else if (checkedMatch && checkedMatch.index !== undefined) {
+        const from = line.from + checkedMatch.index;
+        this.view.dispatch({
+          changes: { from, to: from + 3, insert: "[ ]" },
+        });
+      }
+    });
+    return checkbox;
+  }
+
+  eq(other: CheckboxWidget): boolean {
+    return this.checked === other.checked;
+  }
+}
+
 const hideMark = Decoration.replace({});
 
 function buildDecorations(view: EditorView): DecorationSet {
@@ -160,6 +213,41 @@ function buildDecorations(view: EditorView): DecorationSet {
                 }),
               );
             }
+            break;
+          }
+
+          case "ListMark": {
+            if (cursorIsHere) break;
+            const markText = state.doc.sliceString(node.from, node.to);
+            // Only handle unordered markers; ordered markers like "1." are left as-is
+            if (markText !== "-" && markText !== "*" && markText !== "+") break;
+            const parentItem = node.node.parent;
+            const hasTaskMarker = parentItem?.getChild("TaskMarker") !== null;
+            // If a TaskMarker follows, replace only the mark character to avoid
+            // adjacent replacement artifacts; otherwise swallow the trailing space too
+            const replaceTo = hasTaskMarker ? node.to : node.to + 1;
+            push(
+              node.from,
+              replaceTo,
+              Decoration.replace({ widget: new BulletWidget() }),
+            );
+            break;
+          }
+
+          case "TaskMarker": {
+            if (cursorIsHere) break;
+            const markerText = state.doc.sliceString(node.from, node.to);
+            const isChecked = markerText === "[x]" || markerText === "[X]";
+            // TaskMarker spans "[ ]" or "[x]"; swallow the trailing space too.
+            // Guard against going past line end (mirrors HeaderMark pattern).
+            const taskLineEnd = state.doc.lineAt(node.to).to;
+            push(
+              node.from,
+              Math.min(node.to + 1, taskLineEnd),
+              Decoration.replace({
+                widget: new CheckboxWidget(view, isChecked),
+              }),
+            );
             break;
           }
 

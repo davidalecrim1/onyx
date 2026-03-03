@@ -280,6 +280,23 @@ export default function EditorPage({
     [state.tabs],
   );
 
+  const handleWikilinkCreate = useCallback(
+    async (linkTarget: string) => {
+      const fileName = `${linkTarget}.md`;
+      try {
+        const filePath = await invoke<string>("create_file", {
+          vaultPath,
+          name: fileName,
+        });
+        fetchFileTree();
+        await handleFileClick(filePath);
+      } catch (err) {
+        console.error("Failed to create wikilink target:", err);
+      }
+    },
+    [vaultPath, fetchFileTree, handleFileClick],
+  );
+
   const handleFileDrop = useCallback(
     async (sourcePath: string, targetDirPath: string) => {
       try {
@@ -479,6 +496,8 @@ export default function EditorPage({
               filePath={state.activeTabPath}
               onRename={handleRename}
               vaultPath={vaultPath}
+              onWikilinkOpen={handleFileClick}
+              onWikilinkCreate={handleWikilinkCreate}
             />
           ) : (
             <div className="flex h-full items-center justify-center text-text-secondary">

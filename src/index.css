@@ -79,6 +79,17 @@ body,
   width: 100%;
 }
 
+.onyx-bullet {
+  color: #a9afbc;
+  margin-right: 0.4em;
+}
+
+.onyx-task-checkbox {
+  margin-right: 0.4em;
+  vertical-align: middle;
+  cursor: pointer;
+}
+
 .onyx-inline-title {
   display: block;
   width: 100%;

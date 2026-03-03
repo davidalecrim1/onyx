@@ -266,3 +266,57 @@ pub fn update_file_tags(
     }
     Ok(())
 }
+
+/// Searches the vault for a `.md` file whose stem matches `link_target` (case-insensitive).
+/// Returns the absolute path of the first match, or `None` if not found.
+#[tauri::command]
+pub fn resolve_wikilink(vault_path: String, link_target: String) -> Result<Option<String>, String> {
+    let root = Path::new(&vault_path);
+    let target_lower = link_target.to_lowercase();
+    for entry in walkdir::WalkDir::new(root)
+        .into_iter()
+        .filter_map(|e| e.ok())
+    {
+        let path = entry.path();
+        if path.extension().and_then(|ext| ext.to_str()) != Some("md") {
+            continue;
+        }
+        let stem = path.file_stem().and_then(|s| s.to_str()).unwrap_or("");
+        if stem.to_lowercase() == target_lower {
+            return Ok(Some(path.to_string_lossy().to_string()));
+        }
+    }
+    Ok(None)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tempfile::TempDir;
+
+    #[test]
+    fn resolve_wikilink_finds_nested_file() {
+        let dir = TempDir::new().unwrap();
+        std::fs::create_dir_all(dir.path().join("sub")).unwrap();
+        std::fs::write(dir.path().join("sub/meeting.md"), "").unwrap();
+        let result =
+            resolve_wikilink(dir.path().to_string_lossy().into(), "meeting".into()).unwrap();
+        assert!(result.unwrap().ends_with("meeting.md"));
+    }
+
+    #[test]
+    fn resolve_wikilink_is_case_insensitive() {
+        let dir = TempDir::new().unwrap();
+        std::fs::write(dir.path().join("Meeting.md"), "").unwrap();
+        let result =
+            resolve_wikilink(dir.path().to_string_lossy().into(), "meeting".into()).unwrap();
+        assert!(result.is_some());
+    }
+
+    #[test]
+    fn resolve_wikilink_returns_none_when_not_found() {
+        let dir = TempDir::new().unwrap();
+        let result = resolve_wikilink(dir.path().to_string_lossy().into(), "ghost".into()).unwrap();
+        assert!(result.is_none());
+    }
+}
