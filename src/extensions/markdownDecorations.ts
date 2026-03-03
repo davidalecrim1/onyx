@@ -62,7 +62,12 @@ function buildDecorations(view: EditorView): DecorationSet {
 
           case "HeaderMark": {
             if (!cursorIsHere) {
-              push(node.from, node.to, hideMark);
+              // The HeaderMark node covers only the `#` characters; the trailing
+              // space before the heading text is not part of the node, so we
+              // extend the hidden range by one to swallow it.
+              const afterMark = node.to + 1;
+              const lineEnd = state.doc.lineAt(node.to).to;
+              push(node.from, Math.min(afterMark, lineEnd), hideMark);
             }
             break;
           }

@@ -1,16 +1,20 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import CodeMirror, {
   EditorView,
+  EditorSelection,
   type ReactCodeMirrorRef,
 } from "@uiw/react-codemirror";
 import { markdown } from "@codemirror/lang-markdown";
 import { vim } from "@replit/codemirror-vim";
+import { invoke } from "@tauri-apps/api/core";
 import { markdownDecorations } from "../extensions/markdownDecorations";
+import { tagAutocomplete } from "../extensions/tagAutocomplete";
 
 const onyxTheme = EditorView.theme(
   {
-    "&": { backgroundColor: "#282c33", color: "#dce0e5" },
+    "&": { backgroundColor: "#282c33", color: "#dce0e5", height: "auto" },
     "&.cm-focused": { outline: "none" },
+    ".cm-scroller": { overflow: "visible" },
     ".cm-content": { caretColor: "#74ade8" },
     ".cm-cursor": { borderLeftColor: "#74ade8" },
     ".cm-selectionBackground, ::selection": { backgroundColor: "#454a56" },
@@ -33,6 +37,7 @@ interface Props {
   vimMode: boolean;
   filePath: string | null;
   onRename: (newStem: string) => void;
+  vaultPath: string | null;
 }
 
 export default function MarkdownEditor({
@@ -41,8 +46,19 @@ export default function MarkdownEditor({
   vimMode,
   filePath,
   onRename,
+  vaultPath,
 }: Props) {
   const editorRef = useRef<ReactCodeMirrorRef>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [tags, setTags] = useState<string[]>([]);
+
+  // Load the current tag list whenever a vault becomes available.
+  useEffect(() => {
+    if (!vaultPath) return;
+    invoke<string[]>("get_tags")
+      .then(setTags)
+      .catch(() => {});
+  }, [vaultPath]);
 
   const fileStem = filePath
     ? (filePath
@@ -59,7 +75,43 @@ export default function MarkdownEditor({
 
   useEffect(() => {
     editorRef.current?.view?.focus();
-  }, [content]);
+  }, [filePath]);
+
+  // Cancel any pending debounce when the component unmounts.
+  useEffect(
+    () => () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    },
+    [],
+  );
+
+  const handleChange = useCallback(
+    (value: string) => {
+      onChange(value);
+      if (!filePath) return;
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      debounceRef.current = setTimeout(() => {
+        invoke("update_file_tags", { filePath, content: value }).catch(
+          () => {},
+        );
+        invoke<string[]>("get_tags")
+          .then(setTags)
+          .catch(() => {});
+      }, 800);
+    },
+    [onChange, filePath],
+  );
+
+  const extensions = useMemo(
+    () => [
+      ...(vimMode ? [vim()] : []),
+      markdown(),
+      onyxTheme,
+      markdownDecorations,
+      tagAutocomplete(tags),
+    ],
+    [vimMode, tags],
+  );
 
   const commitRename = useCallback(() => {
     const sanitized = sanitizeFileName(titleValue);
@@ -79,9 +131,21 @@ export default function MarkdownEditor({
               if (e.key === "Enter") {
                 e.preventDefault();
                 commitRename();
+                editorRef.current?.view?.focus();
               }
               if (e.key === "Escape") {
                 setTitleValue(fileStem);
+              }
+              if (e.key === "ArrowDown") {
+                e.preventDefault();
+                const view = editorRef.current?.view;
+                if (view) {
+                  view.dispatch({
+                    selection: EditorSelection.cursor(0),
+                    scrollIntoView: true,
+                  });
+                  view.focus();
+                }
               }
             }}
             className="onyx-inline-title"
@@ -92,13 +156,8 @@ export default function MarkdownEditor({
         <CodeMirror
           ref={editorRef}
           value={content}
-          onChange={onChange}
-          extensions={[
-            ...(vimMode ? [vim()] : []),
-            markdown(),
-            onyxTheme,
-            markdownDecorations,
-          ]}
+          onChange={handleChange}
+          extensions={extensions}
           theme="none"
           basicSetup={{
             lineNumbers: false,

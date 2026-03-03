@@ -145,6 +145,13 @@ export default function EditorPage({
     fetchFileTree();
   }, [fetchFileTree]);
 
+  // Build the tag index whenever the vault changes so autocomplete is ready immediately.
+  useEffect(() => {
+    invoke("build_tag_index", { vaultPath }).catch((err) =>
+      console.error("Failed to build tag index:", err),
+    );
+  }, [vaultPath]);
+
   useEffect(() => {
     invoke<{ vim_mode: boolean }>("get_settings")
       .then((settings) => setVimMode(settings.vim_mode))
@@ -471,6 +478,7 @@ export default function EditorPage({
               vimMode={vimMode}
               filePath={state.activeTabPath}
               onRename={handleRename}
+              vaultPath={vaultPath}
             />
           ) : (
             <div className="flex h-full items-center justify-center text-text-secondary">

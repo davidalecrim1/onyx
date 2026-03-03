@@ -26,6 +26,21 @@ export default function App() {
     refreshKnownVaults();
   }, [refreshKnownVaults]);
 
+  useEffect(() => {
+    invoke<{ name: string; path: string } | null>("get_last_active_vault")
+      .then((entry) => {
+        if (entry) {
+          setView({
+            kind: "editor",
+            vaultPath: entry.path,
+            vaultName: entry.name,
+          });
+          refreshKnownVaults();
+        }
+      })
+      .catch(() => {});
+  }, []);
+
   function handleVaultOpened(vaultPath: string, vaultName: string) {
     refreshKnownVaults();
     setView({ kind: "editor", vaultPath, vaultName });

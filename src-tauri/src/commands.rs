@@ -1,9 +1,12 @@
 use std::path::{Path, PathBuf};
+use std::sync::Mutex;
 
 use serde::{Deserialize, Serialize};
+use tauri::State;
 
 use crate::file_tree::{scan_file_tree, FileTreeEntry};
 use crate::global_config::{load_global_config, register_vault, save_global_config, GlobalConfig};
+use crate::tag_index::TagIndex;
 use crate::vault::Vault;
 use crate::vault_config::{load_vault_session, save_vault_session, VaultSession};
 
@@ -196,6 +199,20 @@ pub fn move_file(source_path: String, target_dir: String) -> Result<(), String> 
     std::fs::rename(&source, &destination).map_err(|e| e.to_string())
 }
 
+/// Returns the last active vault, or `None` if no vault has been opened yet or the path is gone.
+#[tauri::command]
+pub fn get_last_active_vault() -> Result<Option<VaultEntry>, String> {
+    let config = load_global_config().map_err(|e| e.to_string())?;
+    let Some(path) = config.last_active_vault else {
+        return Ok(None);
+    };
+    let vault = Vault::open(&path).map_err(|e| e.to_string())?;
+    Ok(Some(VaultEntry {
+        name: vault.config.name,
+        path: path.to_string_lossy().to_string(),
+    }))
+}
+
 /// Returns all known vaults from the global config.
 #[tauri::command]
 pub fn get_known_vaults() -> Result<Vec<VaultEntry>, String> {
@@ -216,4 +233,36 @@ pub fn get_known_vaults() -> Result<Vec<VaultEntry>, String> {
         })
         .collect();
     Ok(entries)
+}
+
+/// Scans the vault and builds the in-memory tag index; called once when a vault is opened.
+#[tauri::command]
+pub fn build_tag_index(
+    vault_path: String,
+    state: State<'_, Mutex<Option<TagIndex>>>,
+) -> Result<(), String> {
+    let index = TagIndex::build(Path::new(&vault_path)).map_err(|e| e.to_string())?;
+    *state.lock().map_err(|e| e.to_string())? = Some(index);
+    Ok(())
+}
+
+/// Returns all known tags across the vault; returns an empty list if the index has not been built.
+#[tauri::command]
+pub fn get_tags(state: State<'_, Mutex<Option<TagIndex>>>) -> Result<Vec<String>, String> {
+    let guard = state.lock().map_err(|e| e.to_string())?;
+    Ok(guard.as_ref().map_or_else(Vec::new, TagIndex::all_tags))
+}
+
+/// Updates the tag index for a single file after it has been saved.
+#[tauri::command]
+pub fn update_file_tags(
+    file_path: String,
+    content: String,
+    state: State<'_, Mutex<Option<TagIndex>>>,
+) -> Result<(), String> {
+    let mut guard = state.lock().map_err(|e| e.to_string())?;
+    if let Some(index) = guard.as_mut() {
+        index.update_file(&file_path, &content);
+    }
+    Ok(())
 }

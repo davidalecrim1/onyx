@@ -2222,6 +2222,7 @@ dependencies = [
  "tauri-plugin-fs",
  "tempfile",
  "toml 0.8.2",
+ "walkdir",
 ]
 
 [[package]]
