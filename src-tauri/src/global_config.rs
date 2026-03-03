@@ -10,6 +10,9 @@ pub struct GlobalConfig {
     #[serde(default)]
     pub vaults: Vec<PathBuf>,
     pub last_active_vault: Option<PathBuf>,
+    /// Whether the CodeMirror vim keybinding extension is active in the editor.
+    #[serde(default)]
+    pub vim_mode: bool,
 }
 
 /// Returns the directory where global config lives (`~/.config/onyx/`).
@@ -64,6 +67,7 @@ mod tests {
         let config = GlobalConfig {
             vaults: vec![PathBuf::from("/tmp/vault1")],
             last_active_vault: Some(PathBuf::from("/tmp/vault1")),
+            vim_mode: true,
         };
         let serialized = toml::to_string_pretty(&config).unwrap();
         let deserialized: GlobalConfig = toml::from_str(&serialized).unwrap();
@@ -75,6 +79,14 @@ mod tests {
         let config = GlobalConfig::default();
         assert!(config.vaults.is_empty());
         assert!(config.last_active_vault.is_none());
+        assert!(!config.vim_mode);
+    }
+
+    #[test]
+    fn vim_mode_defaults_to_false_when_absent_from_toml() {
+        let toml = r#"vaults = []"#;
+        let config: GlobalConfig = toml::from_str(toml).unwrap();
+        assert!(!config.vim_mode);
     }
 
     #[test]

@@ -66,33 +66,32 @@ export default function WelcomePage({ onVaultOpened }: Props) {
       className="flex h-full flex-col bg-background text-text-primary"
     >
       <div className="flex flex-1 flex-col items-center justify-center">
-      <h1 className="mb-2 text-4xl font-semibold tracking-tight">Onyx</h1>
-      <p className="mb-10 text-text-secondary">
-        Your personal markdown workspace
-      </p>
-
-      <div className="flex gap-4">
-        <button
-          onClick={handleCreateVault}
-          className="rounded-md bg-accent px-5 py-2.5 text-sm font-medium text-background transition-opacity hover:opacity-80"
-        >
-          Create Vault
-        </button>
-        <button
-          onClick={handleOpenVault}
-          className="rounded-md bg-surface px-5 py-2.5 text-sm font-medium text-text-primary transition-colors hover:bg-surface-hover"
-        >
-          Open Vault
-        </button>
-      </div>
-
-      {error && (
-        <p className="mt-6 max-w-sm text-center text-sm text-red-400">
-          {error}
+        <h1 className="mb-2 text-4xl font-semibold tracking-tight">Onyx</h1>
+        <p className="mb-10 text-text-secondary">
+          Your personal markdown workspace
         </p>
-      )}
+
+        <div className="flex gap-4">
+          <button
+            onClick={handleCreateVault}
+            className="rounded-md bg-accent px-5 py-2.5 text-sm font-medium text-background transition-opacity hover:opacity-80"
+          >
+            Create Vault
+          </button>
+          <button
+            onClick={handleOpenVault}
+            className="rounded-md bg-surface px-5 py-2.5 text-sm font-medium text-text-primary transition-colors hover:bg-surface-hover"
+          >
+            Open Vault
+          </button>
+        </div>
+
+        {error && (
+          <p className="mt-6 max-w-sm text-center text-sm text-red-400">
+            {error}
+          </p>
+        )}
       </div>
     </div>
   );
-
 }

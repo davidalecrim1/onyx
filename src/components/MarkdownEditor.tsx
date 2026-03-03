@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import CodeMirror, {
   EditorView,
   type ReactCodeMirrorRef,
@@ -20,26 +20,85 @@ const onyxTheme = EditorView.theme(
   { dark: true },
 );
 
+function sanitizeFileName(raw: string): string {
+  return raw
+    .replace(/[\\/:*?"<>|]/g, "")
+    .replace(/^[.\s]+|[.\s]+$/g, "")
+    .trim();
+}
+
 interface Props {
   content: string;
   onChange: (value: string) => void;
+  vimMode: boolean;
+  filePath: string | null;
+  onRename: (newStem: string) => void;
 }
 
-export default function MarkdownEditor({ content, onChange }: Props) {
+export default function MarkdownEditor({
+  content,
+  onChange,
+  vimMode,
+  filePath,
+  onRename,
+}: Props) {
   const editorRef = useRef<ReactCodeMirrorRef>(null);
+
+  const fileStem = filePath
+    ? (filePath
+        .split("/")
+        .pop()
+        ?.replace(/\.[^.]+$/, "") ?? "")
+    : "";
+
+  const [titleValue, setTitleValue] = useState(fileStem);
+
+  useEffect(() => {
+    setTitleValue(fileStem);
+  }, [fileStem]);
 
   useEffect(() => {
     editorRef.current?.view?.focus();
   }, [content]);
 
+  const commitRename = useCallback(() => {
+    const sanitized = sanitizeFileName(titleValue);
+    if (!sanitized || sanitized === fileStem) return;
+    onRename(sanitized);
+  }, [titleValue, fileStem, onRename]);
+
   return (
     <div className="flex h-full justify-center overflow-y-auto bg-background">
       <div className="w-full max-w-2xl px-8 py-6">
+        {filePath && (
+          <input
+            value={titleValue}
+            onChange={(e) => setTitleValue(e.target.value)}
+            onBlur={commitRename}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                commitRename();
+              }
+              if (e.key === "Escape") {
+                setTitleValue(fileStem);
+              }
+            }}
+            className="onyx-inline-title"
+            spellCheck={false}
+            aria-label="File name"
+          />
+        )}
         <CodeMirror
           ref={editorRef}
           value={content}
           onChange={onChange}
-          extensions={[vim(), markdown(), onyxTheme, markdownDecorations]}
+          extensions={[
+            ...(vimMode ? [vim()] : []),
+            markdown(),
+            onyxTheme,
+            markdownDecorations,
+          ]}
           theme="none"
           basicSetup={{
             lineNumbers: false,

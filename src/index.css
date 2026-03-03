@@ -78,3 +78,22 @@ body,
   margin: 0.5em 0;
   width: 100%;
 }
+
+.onyx-inline-title {
+  display: block;
+  width: 100%;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: #dce0e5;
+  font-size: 2em;
+  font-weight: 700;
+  line-height: 1.2;
+  margin-bottom: 0.5em;
+  padding: 0;
+  caret-color: #74ade8;
+}
+
+.onyx-inline-title::placeholder {
+  color: #454a56;
+}

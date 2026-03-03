@@ -35,7 +35,8 @@ type EditorAction =
   | { type: "close_tab"; path: string }
   | { type: "activate_tab"; path: string }
   | { type: "update_content"; path: string; content: string }
-  | { type: "mark_saved"; path: string };
+  | { type: "mark_saved"; path: string }
+  | { type: "rename_file"; oldPath: string; newPath: string; newName: string };
 
 function editorReducer(state: EditorState, action: EditorAction): EditorState {
   switch (action.type) {
@@ -82,6 +83,29 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
       dirty.delete(action.path);
       return { ...state, dirtyPaths: dirty };
     }
+    case "rename_file": {
+      const tabs = state.tabs.map((tab) =>
+        tab.path === action.oldPath
+          ? { path: action.newPath, name: action.newName }
+          : tab,
+      );
+      const activeTabPath =
+        state.activeTabPath === action.oldPath
+          ? action.newPath
+          : state.activeTabPath;
+      const { [action.oldPath]: movedContent, ...restContents } =
+        state.fileContents;
+      const fileContents =
+        movedContent !== undefined
+          ? { ...restContents, [action.newPath]: movedContent }
+          : restContents;
+      const dirty = new Set(state.dirtyPaths);
+      if (dirty.has(action.oldPath)) {
+        dirty.delete(action.oldPath);
+        dirty.add(action.newPath);
+      }
+      return { tabs, activeTabPath, fileContents, dirtyPaths: dirty };
+    }
   }
 }
 
@@ -97,6 +121,7 @@ export default function EditorPage({
   const [newNoteName, setNewNoteName] = useState<string | null>(null);
   const [newFolderName, setNewFolderName] = useState<string | null>(null);
   const [sessionLoaded, setSessionLoaded] = useState(false);
+  const [vimMode, setVimMode] = useState(false);
   const [selectedFolderPath, setSelectedFolderPath] = useState<string | null>(
     null,
   );
@@ -119,6 +144,12 @@ export default function EditorPage({
   useEffect(() => {
     fetchFileTree();
   }, [fetchFileTree]);
+
+  useEffect(() => {
+    invoke<{ vim_mode: boolean }>("get_settings")
+      .then((settings) => setVimMode(settings.vim_mode))
+      .catch(() => {});
+  }, []);
 
   // Reset context folder when vault changes.
   useEffect(() => {
@@ -263,6 +294,25 @@ export default function EditorPage({
     [state.activeTabPath],
   );
 
+  const handleRename = useCallback(
+    async (newStem: string) => {
+      if (!state.activeTabPath) return;
+      const oldPath = state.activeTabPath;
+      try {
+        const newPath = await invoke<string>("rename_file", {
+          oldPath,
+          newStem,
+        });
+        const newName = newPath.split("/").pop() ?? newPath;
+        dispatch({ type: "rename_file", oldPath, newPath, newName });
+        fetchFileTree();
+      } catch (err) {
+        console.error("Failed to rename file:", err);
+      }
+    },
+    [state.activeTabPath, fetchFileTree],
+  );
+
   const handleTabClick = useCallback(
     (path: string) => dispatch({ type: "activate_tab", path }),
     [],
@@ -304,10 +354,11 @@ export default function EditorPage({
   return (
     <div className="flex h-full bg-background text-text-primary">
       <aside className="flex w-56 shrink-0 flex-col border-r border-surface">
-        <div
-          className="flex items-center justify-between border-b border-surface px-3 py-2 pt-8"
-        >
-          <span data-tauri-drag-region className="flex-1 truncate text-sm font-medium text-text-primary">
+        <div className="flex items-center justify-between border-b border-surface px-3 py-2 pt-8">
+          <span
+            data-tauri-drag-region
+            className="flex-1 truncate text-sm font-medium text-text-primary"
+          >
             {vaultName}
           </span>
           <div className="ml-2 flex shrink-0 items-center gap-1">
@@ -417,6 +468,9 @@ export default function EditorPage({
             <MarkdownEditor
               content={activeContent}
               onChange={handleContentChange}
+              vimMode={vimMode}
+              filePath={state.activeTabPath}
+              onRename={handleRename}
             />
           ) : (
             <div className="flex h-full items-center justify-center text-text-secondary">

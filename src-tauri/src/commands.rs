@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 use serde::{Deserialize, Serialize};
 
 use crate::file_tree::{scan_file_tree, FileTreeEntry};
-use crate::global_config::{load_global_config, register_vault};
+use crate::global_config::{load_global_config, register_vault, save_global_config, GlobalConfig};
 use crate::vault::Vault;
 use crate::vault_config::{load_vault_session, save_vault_session, VaultSession};
 
@@ -145,6 +145,44 @@ pub fn get_default_vault_dir() -> Result<String, String> {
         .ok_or_else(|| "Cannot determine Documents dir".to_string())?
         .join("Onyx");
     Ok(docs.to_string_lossy().to_string())
+}
+
+/// Returns the current application settings from the global config.
+#[tauri::command]
+pub fn get_settings() -> Result<GlobalConfig, String> {
+    load_global_config().map_err(|e| e.to_string())
+}
+
+/// Persists a settings change without clobbering the vault list or other fields.
+#[tauri::command]
+pub fn save_settings(vim_mode: bool) -> Result<(), String> {
+    let mut config = load_global_config().map_err(|e| e.to_string())?;
+    config.vim_mode = vim_mode;
+    save_global_config(&config).map_err(|e| e.to_string())
+}
+
+/// Renames a file within its current directory, preserving the extension, and returns the new absolute path.
+#[tauri::command]
+pub fn rename_file(old_path: String, new_stem: String) -> Result<String, String> {
+    let source = PathBuf::from(&old_path);
+    let parent = source
+        .parent()
+        .ok_or_else(|| "Path has no parent directory".to_string())?;
+    let extension = source
+        .extension()
+        .and_then(|ext| ext.to_str())
+        .unwrap_or("");
+    let new_file_name = if extension.is_empty() {
+        new_stem.clone()
+    } else {
+        format!("{}.{}", new_stem, extension)
+    };
+    let destination = parent.join(&new_file_name);
+    if destination.exists() {
+        return Err(format!("A file named '{}' already exists", new_file_name));
+    }
+    std::fs::rename(&source, &destination).map_err(|e| e.to_string())?;
+    Ok(destination.to_string_lossy().to_string())
 }
 
 /// Moves a file or directory to a new parent directory, preserving the original name.
