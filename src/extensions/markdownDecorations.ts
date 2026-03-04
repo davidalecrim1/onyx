@@ -43,13 +43,28 @@ class CheckboxWidget extends WidgetType {
   }
 
   toDOM(): HTMLElement {
-    const checkbox = document.createElement("input");
-    checkbox.type = "checkbox";
-    checkbox.className = "onyx-task-checkbox";
-    checkbox.checked = this.checked;
-    checkbox.addEventListener("click", (event) => {
+    const wrapper = document.createElement("span");
+    wrapper.className = `onyx-task-checkbox${this.checked ? " onyx-task-checkbox--checked" : ""}`;
+    wrapper.setAttribute("role", "checkbox");
+    wrapper.setAttribute("aria-checked", String(this.checked));
+    wrapper.setAttribute("tabindex", "0");
+
+    if (this.checked) {
+      wrapper.innerHTML =
+        `<svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">` +
+        `<rect x="1" y="1" width="14" height="14" rx="3" fill="currentColor"/>` +
+        `<path d="M4 8l2.5 2.5L12 5.5" stroke="#1a1d23" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>` +
+        `</svg>`;
+    } else {
+      wrapper.innerHTML =
+        `<svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">` +
+        `<rect x="1" y="1" width="14" height="14" rx="3" stroke="currentColor" stroke-width="1.5"/>` +
+        `</svg>`;
+    }
+
+    const toggle = (event: Event) => {
       event.preventDefault();
-      const pos = this.view.posAtDOM(checkbox);
+      const pos = this.view.posAtDOM(wrapper);
       const line = this.view.state.doc.lineAt(pos);
       const lineText = this.view.state.doc.sliceString(line.from, line.to);
       const uncheckedMatch = lineText.match(/\[ \]/);
@@ -65,8 +80,14 @@ class CheckboxWidget extends WidgetType {
           changes: { from, to: from + 3, insert: "[ ]" },
         });
       }
+    };
+
+    wrapper.addEventListener("click", toggle);
+    wrapper.addEventListener("keydown", (event) => {
+      if (event.key === " " || event.key === "Enter") toggle(event);
     });
-    return checkbox;
+
+    return wrapper;
   }
 
   eq(other: CheckboxWidget): boolean {
