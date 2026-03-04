@@ -107,7 +107,15 @@ export const imageViewPlugin = ViewPlugin.fromClass(
           if (cursorLines.has(lineNumber)) continue;
 
           const specifier = match[1].trim();
-          this._resolveAndDecorate(view, specifier, matchFrom, matchTo, config, "wikilink", collected);
+          this._resolveAndDecorate(
+            view,
+            specifier,
+            matchFrom,
+            matchTo,
+            config,
+            "wikilink",
+            collected,
+          );
         }
 
         MDIMAGE_RE.lastIndex = 0;
@@ -118,7 +126,15 @@ export const imageViewPlugin = ViewPlugin.fromClass(
           if (cursorLines.has(lineNumber)) continue;
 
           const specifier = match[2].trim();
-          this._resolveAndDecorate(view, specifier, matchFrom, matchTo, config, "mdimage", collected);
+          this._resolveAndDecorate(
+            view,
+            specifier,
+            matchFrom,
+            matchTo,
+            config,
+            "mdimage",
+            collected,
+          );
         }
       }
 

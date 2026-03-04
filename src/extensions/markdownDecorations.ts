@@ -131,9 +131,7 @@ class TableWidget extends WidgetType {
 
   toDOM(): HTMLElement {
     const lines = this.rawText.split("\n").filter((line) => line.trim() !== "");
-    const separatorIndex = lines.findIndex((line) =>
-      /^[\|\s\-:]+$/.test(line),
-    );
+    const separatorIndex = lines.findIndex((line) => /^[|\s\-:]+$/.test(line));
 
     const alignments: Array<"left" | "center" | "right"> = [];
     if (separatorIndex !== -1) {
@@ -158,7 +156,10 @@ class TableWidget extends WidgetType {
         .split("|")
         .map((c) => c.trim())
         .filter((_, index, arr) => index !== 0 || arr[0] !== "")
-        .filter((_, index, arr) => index !== arr.length - 1 || arr[arr.length - 1] !== "");
+        .filter(
+          (_, index, arr) =>
+            index !== arr.length - 1 || arr[arr.length - 1] !== "",
+        );
 
     const dataLines = lines.filter((_, index) => index !== separatorIndex);
     const headerRow = dataLines[0];

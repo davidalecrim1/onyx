@@ -10,6 +10,7 @@ interface Props {
   currentVaultPath: string;
   vaults: VaultEntry[];
   onSwitch: (path: string, name: string) => void;
+  onOpenWelcome: () => void;
 }
 
 export default function VaultSwitcher({
@@ -17,6 +18,7 @@ export default function VaultSwitcher({
   currentVaultPath,
   vaults,
   onSwitch,
+  onOpenWelcome,
 }: Props) {
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -66,6 +68,15 @@ export default function VaultSwitcher({
               </span>
             </button>
           ))}
+          <button
+            onClick={() => {
+              setOpen(false);
+              onOpenWelcome();
+            }}
+            className="flex w-full items-center gap-2 border-t border-surface px-3 py-2 text-left text-sm text-text-secondary transition-colors hover:bg-surface hover:text-text-primary"
+          >
+            <span className="ml-3.5 truncate">Open another vault...</span>
+          </button>
         </div>
       )}
       <button

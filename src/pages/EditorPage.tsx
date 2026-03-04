@@ -4,6 +4,8 @@ import FileTree, { type FileTreeEntry } from "../components/FileTree";
 import TabBar, { type Tab } from "../components/TabBar";
 import MarkdownEditor from "../components/MarkdownEditor";
 import VaultSwitcher from "../components/VaultSwitcher";
+import AppLayout from "../components/AppLayout";
+import { useKeybindings } from "../hooks/useKeybindings";
 
 interface VaultEntry {
   name: string;
@@ -359,153 +361,147 @@ export default function EditorPage({
     }
   };
 
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === "s") {
-        e.preventDefault();
-        saveRef.current();
-      }
-    };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, []);
+  useKeybindings(saveRef);
 
   const activeContent =
     state.activeTabPath !== null
       ? (state.fileContents[state.activeTabPath] ?? "")
       : null;
 
-  return (
-    <div className="flex h-full bg-background text-text-primary">
-      <aside className="flex w-56 shrink-0 flex-col border-r border-surface">
-        <div className="flex items-center justify-between border-b border-surface px-3 py-2 pt-8">
-          <span
-            data-tauri-drag-region
-            className="flex-1 truncate text-sm font-medium text-text-primary"
+  const sidebar = (
+    <>
+      <div className="flex items-center justify-between border-b border-surface px-3 py-2 pt-8">
+        <span
+          data-tauri-drag-region
+          className="flex-1 truncate text-sm font-medium text-text-primary"
+        >
+          {vaultName}
+        </span>
+        <div className="ml-2 flex shrink-0 items-center gap-1">
+          <button
+            onClick={handleNewNoteOpen}
+            className="rounded px-1 text-text-secondary transition-colors hover:text-text-primary"
+            aria-label="New note"
           >
-            {vaultName}
-          </span>
-          <div className="ml-2 flex shrink-0 items-center gap-1">
-            <button
-              onClick={handleNewNoteOpen}
-              className="rounded px-1 text-text-secondary transition-colors hover:text-text-primary"
-              aria-label="New note"
+            +
+          </button>
+          <button
+            onClick={handleNewFolderOpen}
+            className="rounded px-1 text-text-secondary transition-colors hover:text-text-primary"
+            aria-label="New folder"
+          >
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 14 14"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+              aria-hidden="true"
             >
-              +
-            </button>
-            <button
-              onClick={handleNewFolderOpen}
-              className="rounded px-1 text-text-secondary transition-colors hover:text-text-primary"
-              aria-label="New folder"
-            >
-              <svg
-                width="14"
-                height="14"
-                viewBox="0 0 14 14"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-                aria-hidden="true"
-              >
-                <path
-                  d="M1 3.5C1 2.94772 1.44772 2.5 2 2.5H5.5L7 4H12C12.5523 4 13 4.44772 13 5V10.5C13 11.0523 12.5523 11.5 12 11.5H2C1.44772 11.5 1 11.0523 1 10.5V3.5Z"
-                  stroke="currentColor"
-                  strokeWidth="1.2"
-                  strokeLinejoin="round"
-                />
-              </svg>
-            </button>
-            <button
-              onClick={onClose}
-              className="rounded px-1 text-text-secondary transition-colors hover:text-text-primary"
-              aria-label="Close vault"
-            >
-              ×
-            </button>
-          </div>
-        </div>
-        <div className="flex-1 overflow-y-auto py-1">
-          {newNoteName !== null && (
-            <div className="px-3 py-1">
-              <input
-                ref={newNoteInputCallbackRef}
-                value={newNoteName}
-                onChange={(e) => setNewNoteName(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter")
-                    handleNewNoteConfirm(newNoteName ?? "");
-                  if (e.key === "Escape") setNewNoteName(null);
-                }}
-                onBlur={() => setNewNoteName(null)}
-                className="w-full rounded bg-surface px-2 py-0.5 text-sm text-text-primary outline-none ring-1 ring-accent"
-                spellCheck={false}
+              <path
+                d="M1 3.5C1 2.94772 1.44772 2.5 2 2.5H5.5L7 4H12C12.5523 4 13 4.44772 13 5V10.5C13 11.0523 12.5523 11.5 12 11.5H2C1.44772 11.5 1 11.0523 1 10.5V3.5Z"
+                stroke="currentColor"
+                strokeWidth="1.2"
+                strokeLinejoin="round"
               />
-            </div>
-          )}
-          {newFolderName !== null && (
-            <div className="px-3 py-1">
-              <input
-                ref={newFolderInputCallbackRef}
-                value={newFolderName}
-                onChange={(e) => setNewFolderName(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter")
-                    handleNewFolderConfirm(newFolderName ?? "");
-                  if (e.key === "Escape") setNewFolderName(null);
-                }}
-                onBlur={() => setNewFolderName(null)}
-                className="w-full rounded bg-surface px-2 py-0.5 text-sm text-text-primary outline-none ring-1 ring-accent"
-                spellCheck={false}
-              />
-            </div>
-          )}
-          {treeError ? (
-            <p className="px-3 py-2 text-xs text-red-400">{treeError}</p>
-          ) : (
-            <FileTree
-              entries={fileTree}
-              activeFilePath={state.activeTabPath}
-              vaultPath={vaultPath}
-              onFileClick={handleFileClick}
-              onFolderClick={handleFolderClick}
-              onFileDrop={handleFileDrop}
-            />
-          )}
-        </div>
-        <VaultSwitcher
-          currentVaultName={vaultName}
-          currentVaultPath={vaultPath}
-          vaults={knownVaults}
-          onSwitch={onSwitchVault}
-        />
-      </aside>
-
-      <div className="flex flex-1 flex-col overflow-hidden">
-        <TabBar
-          tabs={state.tabs}
-          activeTabPath={state.activeTabPath}
-          dirtyPaths={state.dirtyPaths}
-          onTabClick={handleTabClick}
-          onTabClose={handleTabClose}
-        />
-        <div className="flex-1 overflow-hidden">
-          {activeContent !== null ? (
-            <MarkdownEditor
-              content={activeContent}
-              onChange={handleContentChange}
-              vimMode={vimMode}
-              filePath={state.activeTabPath}
-              onRename={handleRename}
-              vaultPath={vaultPath}
-              onWikilinkOpen={handleFileClick}
-              onWikilinkCreate={handleWikilinkCreate}
-            />
-          ) : (
-            <div className="flex h-full items-center justify-center text-text-secondary">
-              <p className="text-sm">Open a file from the sidebar</p>
-            </div>
-          )}
+            </svg>
+          </button>
+          <button
+            onClick={onClose}
+            className="rounded px-1 text-text-secondary transition-colors hover:text-text-primary"
+            aria-label="Close vault"
+          >
+            ×
+          </button>
         </div>
       </div>
-    </div>
+      <div className="flex-1 overflow-y-auto py-1">
+        {newNoteName !== null && (
+          <div className="px-3 py-1">
+            <input
+              ref={newNoteInputCallbackRef}
+              value={newNoteName}
+              onChange={(e) => setNewNoteName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleNewNoteConfirm(newNoteName ?? "");
+                if (e.key === "Escape") setNewNoteName(null);
+              }}
+              onBlur={() => setNewNoteName(null)}
+              className="w-full rounded bg-surface px-2 py-0.5 text-sm text-text-primary outline-none ring-1 ring-accent"
+              spellCheck={false}
+            />
+          </div>
+        )}
+        {newFolderName !== null && (
+          <div className="px-3 py-1">
+            <input
+              ref={newFolderInputCallbackRef}
+              value={newFolderName}
+              onChange={(e) => setNewFolderName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter")
+                  handleNewFolderConfirm(newFolderName ?? "");
+                if (e.key === "Escape") setNewFolderName(null);
+              }}
+              onBlur={() => setNewFolderName(null)}
+              className="w-full rounded bg-surface px-2 py-0.5 text-sm text-text-primary outline-none ring-1 ring-accent"
+              spellCheck={false}
+            />
+          </div>
+        )}
+        {treeError ? (
+          <p className="px-3 py-2 text-xs text-red-400">{treeError}</p>
+        ) : (
+          <FileTree
+            entries={fileTree}
+            activeFilePath={state.activeTabPath}
+            vaultPath={vaultPath}
+            onFileClick={handleFileClick}
+            onFolderClick={handleFolderClick}
+            onFileDrop={handleFileDrop}
+          />
+        )}
+      </div>
+      <VaultSwitcher
+        currentVaultName={vaultName}
+        currentVaultPath={vaultPath}
+        vaults={knownVaults}
+        onSwitch={onSwitchVault}
+        onOpenWelcome={onClose}
+      />
+    </>
+  );
+
+  const tabBar = (
+    <TabBar
+      tabs={state.tabs}
+      activeTabPath={state.activeTabPath}
+      dirtyPaths={state.dirtyPaths}
+      onTabClick={handleTabClick}
+      onTabClose={handleTabClose}
+    />
+  );
+
+  return (
+    <AppLayout sidebar={sidebar} tabBar={tabBar}>
+      <div className="flex-1 overflow-hidden">
+        {activeContent !== null ? (
+          <MarkdownEditor
+            content={activeContent}
+            onChange={handleContentChange}
+            vimMode={vimMode}
+            filePath={state.activeTabPath}
+            onRename={handleRename}
+            vaultPath={vaultPath}
+            onWikilinkOpen={handleFileClick}
+            onWikilinkCreate={handleWikilinkCreate}
+          />
+        ) : (
+          <div className="flex h-full items-center justify-center text-text-secondary">
+            <p className="text-sm">Open a file from the sidebar</p>
+          </div>
+        )}
+      </div>
+    </AppLayout>
   );
 }
