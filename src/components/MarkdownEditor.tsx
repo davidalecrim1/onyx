@@ -5,6 +5,7 @@ import CodeMirror, {
   type ReactCodeMirrorRef,
 } from "@uiw/react-codemirror";
 import { markdown } from "@codemirror/lang-markdown";
+import { GFM, Strikethrough, TaskList } from "@lezer/markdown";
 import { vim } from "@replit/codemirror-vim";
 import { invoke } from "@tauri-apps/api/core";
 import { markdownDecorations } from "../extensions/markdownDecorations";
@@ -14,6 +15,11 @@ import {
   wikilinkConfigField,
   wikilinkViewPlugin,
 } from "../extensions/wikilinkDecorations";
+import {
+  imageConfigField,
+  setImageConfig,
+  imageViewPlugin,
+} from "../extensions/imageDecorations";
 
 const onyxTheme = EditorView.theme(
   {
@@ -81,6 +87,14 @@ export default function MarkdownEditor({
     });
   }, [vaultPath, onWikilinkOpen, onWikilinkCreate]);
 
+  useEffect(() => {
+    const view = editorRef.current?.view;
+    if (!view || !vaultPath || !filePath) return;
+    view.dispatch({
+      effects: setImageConfig.of({ vaultPath, filePath }),
+    });
+  }, [vaultPath, filePath]);
+
   const fileStem = filePath
     ? (filePath
         .split("/")
@@ -126,12 +140,14 @@ export default function MarkdownEditor({
   const extensions = useMemo(
     () => [
       ...(vimMode ? [vim()] : []),
-      markdown(),
+      markdown({ extensions: [TaskList, GFM, Strikethrough] }),
       onyxTheme,
       markdownDecorations,
       tagAutocomplete(tags),
       wikilinkConfigField,
       wikilinkViewPlugin,
+      imageConfigField,
+      imageViewPlugin,
     ],
     [vimMode, tags],
   );

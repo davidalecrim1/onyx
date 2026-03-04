@@ -74,6 +74,181 @@ class CheckboxWidget extends WidgetType {
   }
 }
 
+class FrontmatterWidget extends WidgetType {
+  toDOM(): HTMLElement {
+    const span = document.createElement("span");
+    span.className = "onyx-frontmatter-pill";
+    span.textContent = "Frontmatter";
+    return span;
+  }
+
+  eq(): boolean {
+    return true;
+  }
+}
+
+const CALLOUT_TYPES: Record<
+  string,
+  { borderColor: string; icon: string; cssClass: string }
+> = {
+  note: { borderColor: "#74ade8", icon: "ℹ", cssClass: "onyx-callout-note" },
+  info: { borderColor: "#74ade8", icon: "ℹ", cssClass: "onyx-callout-note" },
+  tip: { borderColor: "#4db89a", icon: "💡", cssClass: "onyx-callout-tip" },
+  hint: { borderColor: "#4db89a", icon: "💡", cssClass: "onyx-callout-hint" },
+  warning: {
+    borderColor: "#e8c074",
+    icon: "⚠",
+    cssClass: "onyx-callout-warning",
+  },
+  danger: {
+    borderColor: "#e87474",
+    icon: "✕",
+    cssClass: "onyx-callout-danger",
+  },
+  error: { borderColor: "#e87474", icon: "✕", cssClass: "onyx-callout-error" },
+  quote: {
+    borderColor: "#a9afbc",
+    icon: "\u201C",
+    cssClass: "onyx-callout-quote",
+  },
+  cite: {
+    borderColor: "#a9afbc",
+    icon: "\u201C",
+    cssClass: "onyx-callout-cite",
+  },
+};
+
+const CALLOUT_RE = /^>\s*\[!([\w-]+)\]/i;
+
+class TableWidget extends WidgetType {
+  constructor(private readonly rawText: string) {
+    super();
+  }
+
+  eq(other: TableWidget): boolean {
+    return this.rawText === other.rawText;
+  }
+
+  toDOM(): HTMLElement {
+    const lines = this.rawText.split("\n").filter((line) => line.trim() !== "");
+    const separatorIndex = lines.findIndex((line) =>
+      /^[\|\s\-:]+$/.test(line),
+    );
+
+    const alignments: Array<"left" | "center" | "right"> = [];
+    if (separatorIndex !== -1) {
+      const sepLine = lines[separatorIndex];
+      const cells = sepLine
+        .split("|")
+        .map((c) => c.trim())
+        .filter((c) => c !== "");
+      for (const cell of cells) {
+        if (cell.startsWith(":") && cell.endsWith(":")) {
+          alignments.push("center");
+        } else if (cell.endsWith(":")) {
+          alignments.push("right");
+        } else {
+          alignments.push("left");
+        }
+      }
+    }
+
+    const parseRow = (line: string): string[] =>
+      line
+        .split("|")
+        .map((c) => c.trim())
+        .filter((_, index, arr) => index !== 0 || arr[0] !== "")
+        .filter((_, index, arr) => index !== arr.length - 1 || arr[arr.length - 1] !== "");
+
+    const dataLines = lines.filter((_, index) => index !== separatorIndex);
+    const headerRow = dataLines[0];
+    const bodyRows = dataLines.slice(1);
+
+    const table = document.createElement("table");
+    table.className = "onyx-table";
+
+    const thead = document.createElement("thead");
+    const headerTr = document.createElement("tr");
+    const headerCells = parseRow(headerRow);
+    headerCells.forEach((cell, index) => {
+      const th = document.createElement("th");
+      th.textContent = cell;
+      if (alignments[index]) th.style.textAlign = alignments[index];
+      headerTr.appendChild(th);
+    });
+    thead.appendChild(headerTr);
+    table.appendChild(thead);
+
+    const tbody = document.createElement("tbody");
+    for (const row of bodyRows) {
+      const tr = document.createElement("tr");
+      const cells = parseRow(row);
+      cells.forEach((cell, index) => {
+        const td = document.createElement("td");
+        td.textContent = cell;
+        if (alignments[index]) td.style.textAlign = alignments[index];
+        tr.appendChild(td);
+      });
+      tbody.appendChild(tr);
+    }
+    table.appendChild(tbody);
+
+    return table;
+  }
+}
+
+class CalloutWidget extends WidgetType {
+  constructor(
+    private readonly calloutType: string,
+    private readonly bodyLines: string[],
+  ) {
+    super();
+  }
+
+  eq(other: CalloutWidget): boolean {
+    return (
+      this.calloutType === other.calloutType &&
+      this.bodyLines.join("\n") === other.bodyLines.join("\n")
+    );
+  }
+
+  toDOM(): HTMLElement {
+    const typeKey = this.calloutType.toLowerCase();
+    const config = CALLOUT_TYPES[typeKey] ?? {
+      borderColor: "#a9afbc",
+      icon: "•",
+      cssClass: "onyx-callout-unknown",
+    };
+
+    const wrapper = document.createElement("div");
+    wrapper.className = `onyx-callout ${config.cssClass}`;
+
+    const title = document.createElement("div");
+    title.className = "onyx-callout-title";
+
+    const icon = document.createElement("span");
+    icon.className = "onyx-callout-icon";
+    icon.textContent = config.icon;
+    title.appendChild(icon);
+
+    const label = document.createElement("span");
+    label.textContent =
+      this.calloutType.charAt(0).toUpperCase() + this.calloutType.slice(1);
+    title.appendChild(label);
+
+    wrapper.appendChild(title);
+
+    const body = document.createElement("div");
+    body.className = "onyx-callout-body";
+    body.textContent = this.bodyLines
+      .map((line) => line.replace(/^>\s?/, ""))
+      .join("\n");
+    wrapper.appendChild(body);
+
+    return wrapper;
+  }
+}
+
 const hideMark = Decoration.replace({});
 
 function buildDecorations(view: EditorView): DecorationSet {
@@ -88,6 +263,37 @@ function buildDecorations(view: EditorView): DecorationSet {
   const push = (from: number, to: number, value: Decoration) => {
     collected.push({ from, to, value });
   };
+
+  if (state.doc.lines >= 1 && state.doc.line(1).text === "---") {
+    let fmClosingLine = -1;
+    for (let lineNum = 2; lineNum <= state.doc.lines; lineNum++) {
+      if (state.doc.line(lineNum).text === "---") {
+        fmClosingLine = lineNum;
+        break;
+      }
+    }
+    if (fmClosingLine !== -1) {
+      let fmHasCursor = false;
+      for (let ln = 1; ln <= fmClosingLine; ln++) {
+        if (cursorLines.has(ln)) {
+          fmHasCursor = true;
+          break;
+        }
+      }
+      if (!fmHasCursor) {
+        const fmFrom = state.doc.line(1).from;
+        const fmTo = state.doc.line(fmClosingLine).to;
+        push(
+          fmFrom,
+          fmTo,
+          Decoration.replace({
+            widget: new FrontmatterWidget(),
+            block: true,
+          }),
+        );
+      }
+    }
+  }
 
   for (const { from, to } of view.visibleRanges) {
     syntaxTree(state).iterate({
@@ -246,6 +452,64 @@ function buildDecorations(view: EditorView): DecorationSet {
               Math.min(node.to + 1, taskLineEnd),
               Decoration.replace({
                 widget: new CheckboxWidget(view, isChecked),
+              }),
+            );
+            break;
+          }
+
+          case "Table": {
+            const tableLineStart = state.doc.lineAt(node.from).number;
+            const tableLineEnd = state.doc.lineAt(node.to).number;
+            let tableHasCursor = false;
+            for (let ln = tableLineStart; ln <= tableLineEnd; ln++) {
+              if (cursorLines.has(ln)) {
+                tableHasCursor = true;
+                break;
+              }
+            }
+            if (!tableHasCursor) {
+              push(
+                node.from,
+                node.to,
+                Decoration.replace({
+                  widget: new TableWidget(
+                    state.doc.sliceString(node.from, node.to),
+                  ),
+                  block: true,
+                }),
+              );
+            }
+            break;
+          }
+
+          case "Blockquote": {
+            const bqLineStart = state.doc.lineAt(node.from).number;
+            const bqLineEnd = state.doc.lineAt(node.to).number;
+            let bqHasCursor = false;
+            for (let ln = bqLineStart; ln <= bqLineEnd; ln++) {
+              if (cursorLines.has(ln)) {
+                bqHasCursor = true;
+                break;
+              }
+            }
+            if (bqHasCursor) break;
+
+            const firstLine = state.doc.line(bqLineStart).text;
+            const calloutMatch = CALLOUT_RE.exec(firstLine);
+            if (!calloutMatch) break;
+
+            const calloutType = calloutMatch[1];
+            const bodyLines: string[] = [];
+            for (let ln = bqLineStart + 1; ln <= bqLineEnd; ln++) {
+              bodyLines.push(state.doc.line(ln).text);
+            }
+
+            push(
+              node.from,
+              node.to,
+              Decoration.replace({
+                widget: new CalloutWidget(calloutType, bodyLines),
+                block: true,
               }),
             );
             break;

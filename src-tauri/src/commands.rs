@@ -289,6 +289,20 @@ pub fn resolve_wikilink(vault_path: String, link_target: String) -> Result<Optio
     Ok(None)
 }
 
+/// Resolves a relative asset path to an absolute path for display in the editor.
+#[tauri::command]
+pub fn resolve_asset_path(
+    vault_path: String,
+    file_path: String,
+    relative_path: String,
+) -> Result<String, String> {
+    let base = Path::new(&file_path)
+        .parent()
+        .unwrap_or_else(|| Path::new(&vault_path));
+    let resolved = base.join(&relative_path);
+    Ok(resolved.to_string_lossy().to_string())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -108,3 +108,79 @@ body,
 .onyx-inline-title::placeholder {
   color: #454a56;
 }
+
+.onyx-table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 0.5em 0;
+}
+.onyx-table th,
+.onyx-table td {
+  border: 1px solid #454a56;
+  padding: 0.3em 0.6em;
+}
+.onyx-table thead {
+  background-color: #22262e;
+  font-weight: 600;
+}
+.onyx-table tbody tr:nth-child(even) {
+  background-color: #22262e;
+}
+
+.onyx-callout {
+  border-left: 4px solid;
+  border-radius: 4px;
+  padding: 0.5em 0.8em;
+  margin: 0.5em 0;
+  background: rgba(0, 0, 0, 0.15);
+}
+.onyx-callout-title {
+  font-weight: 600;
+  margin-bottom: 0.25em;
+  display: flex;
+  align-items: center;
+  gap: 0.4em;
+}
+.onyx-callout-note {
+  border-color: #74ade8;
+}
+.onyx-callout-tip,
+.onyx-callout-hint {
+  border-color: #4db89a;
+}
+.onyx-callout-warning {
+  border-color: #e8c074;
+}
+.onyx-callout-danger,
+.onyx-callout-error {
+  border-color: #e87474;
+}
+.onyx-callout-quote,
+.onyx-callout-cite {
+  border-color: #a9afbc;
+}
+
+.onyx-image {
+  max-width: 100%;
+  border-radius: 4px;
+  margin: 0.25em 0;
+  display: block;
+}
+.onyx-image-broken {
+  padding: 0.5em;
+  color: #a9afbc;
+  font-size: 0.85em;
+  border: 1px dashed #454a56;
+  border-radius: 4px;
+}
+
+.onyx-frontmatter-pill {
+  display: inline-block;
+  font-size: 0.75em;
+  color: #a9afbc;
+  background: #22262e;
+  border: 1px solid #454a56;
+  border-radius: 999px;
+  padding: 0.1em 0.7em;
+  cursor: pointer;
+}
