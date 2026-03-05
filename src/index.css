@@ -58,6 +58,10 @@ body,
   text-decoration: underline;
 }
 
+.onyx-tag {
+  color: #74ade8;
+}
+
 .onyx-code-inline {
   background-color: #22262e;
   border-radius: 3px;

@@ -1,5 +1,6 @@
 use std::path::PathBuf;
 
+use log::{info, warn};
 use serde::{Deserialize, Serialize};
 
 use crate::error::OnyxError;
@@ -30,8 +31,13 @@ fn config_path() -> Result<PathBuf, OnyxError> {
 pub fn load_global_config() -> Result<GlobalConfig, OnyxError> {
     let path = config_path()?;
     if !path.exists() {
+        warn!(
+            "Global config not found at {}, using defaults",
+            path.display()
+        );
         return Ok(GlobalConfig::default());
     }
+    info!("Loading global config from {}", path.display());
     let contents = std::fs::read_to_string(&path)?;
     Ok(toml::from_str(&contents)?)
 }
@@ -53,8 +59,9 @@ pub fn register_vault(vault_path: PathBuf) -> Result<GlobalConfig, OnyxError> {
     if !config.vaults.contains(&vault_path) {
         config.vaults.push(vault_path.clone());
     }
-    config.last_active_vault = Some(vault_path);
+    config.last_active_vault = Some(vault_path.clone());
     save_global_config(&config)?;
+    info!("Registered vault: {}", vault_path.display());
     Ok(config)
 }
 

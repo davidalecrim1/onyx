@@ -19,7 +19,7 @@ interface PanelState {
 const DEFAULT_PANELS: Record<string, PanelConfig> = {
   fileTree: {
     isOpen: true,
-    width: 224,
+    width: 260,
     height: 0,
     minSize: 160,
     maxSize: 480,

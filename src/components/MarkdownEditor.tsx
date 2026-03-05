@@ -163,8 +163,9 @@ export default function MarkdownEditor({
     <div className="flex h-full justify-center overflow-y-auto bg-background">
       <div className="w-full max-w-[806px] px-8 py-6">
         {filePath && vaultPath && (() => {
-          const relative = filePath.startsWith(vaultPath)
-            ? filePath.slice(vaultPath.length + 1)
+          const normalizedVault = vaultPath.endsWith("/") ? vaultPath : vaultPath + "/";
+          const relative = filePath.startsWith(normalizedVault)
+            ? filePath.slice(normalizedVault.length)
             : filePath;
           const segments = relative.split("/");
           const fileName = segments[segments.length - 1];

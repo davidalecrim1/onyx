@@ -15,6 +15,7 @@
     "@replit/codemirror-vim": "^6",
     "@tauri-apps/api": "^2",
     "@tauri-apps/plugin-dialog": "^2",
+    "@tauri-apps/plugin-log": "^2.8.0",
     "@uiw/react-codemirror": "^4",
     "react": "^18",
     "react-dom": "^18",

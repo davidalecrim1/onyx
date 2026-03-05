@@ -46,60 +46,68 @@ export const wikilinkViewPlugin = ViewPlugin.fromClass(
     }
 
     _buildDecorations(view: EditorView): DecorationSet {
-      const { state } = view;
-      const cursorLines = new Set(
-        state.selection.ranges.map(
-          (range) => state.doc.lineAt(range.head).number,
-        ),
-      );
+      try {
+        const { state } = view;
+        const cursorLines = new Set(
+          state.selection.ranges.map(
+            (range) => state.doc.lineAt(range.head).number,
+          ),
+        );
 
-      type Entry = { from: number; to: number; value: Decoration };
-      const collected: Entry[] = [];
+        type Entry = { from: number; to: number; value: Decoration };
+        const collected: Entry[] = [];
 
-      for (const { from, to } of view.visibleRanges) {
-        // Walk each match manually so we can apply per-line cursor logic
-        let match: RegExpExecArray | null;
-        WIKILINK_RE.lastIndex = 0;
-        const text = state.doc.sliceString(from, to);
-        while ((match = WIKILINK_RE.exec(text)) !== null) {
-          const matchFrom = from + match.index;
-          const matchTo = matchFrom + match[0].length;
-          const lineNumber = state.doc.lineAt(matchFrom).number;
-          const cursorIsHere = cursorLines.has(lineNumber);
-          const noteName = match[1];
-          const alias = match[2];
+        for (const { from, to } of view.visibleRanges) {
+          let match: RegExpExecArray | null;
+          WIKILINK_RE.lastIndex = 0;
+          const text = state.doc.sliceString(from, to);
+          while ((match = WIKILINK_RE.exec(text)) !== null) {
+            const matchFrom = from + match.index;
+            const matchTo = matchFrom + match[0].length;
+            const lineNumber = state.doc.lineAt(matchFrom).number;
+            const cursorIsHere = cursorLines.has(lineNumber);
+            const noteName = match[1];
+            const alias = match[2];
 
-          if (cursorIsHere) {
-            collected.push({ from: matchFrom, to: matchTo, value: linkMark });
-          } else {
-            const openEnd = matchFrom + 2;
-            const closeStart = matchTo - 2;
-            collected.push({ from: matchFrom, to: matchTo, value: linkMark });
-            collected.push({
-              from: matchFrom,
-              to: openEnd,
-              value: hideMark,
-            });
-            if (alias !== undefined) {
-              const pipePos = matchFrom + 2 + noteName.length;
+            if (cursorIsHere) {
+              collected.push({ from: matchFrom, to: matchTo, value: linkMark });
+            } else {
+              const openEnd = matchFrom + 2;
+              const closeStart = matchTo - 2;
+              collected.push({ from: matchFrom, to: matchTo, value: linkMark });
               collected.push({
-                from: openEnd,
-                to: pipePos + 1,
+                from: matchFrom,
+                to: openEnd,
+                value: hideMark,
+              });
+              if (alias !== undefined) {
+                const pipePos = matchFrom + 2 + noteName.length;
+                collected.push({
+                  from: openEnd,
+                  to: pipePos + 1,
+                  value: hideMark,
+                });
+              }
+              collected.push({
+                from: closeStart,
+                to: matchTo,
                 value: hideMark,
               });
             }
-            collected.push({ from: closeStart, to: matchTo, value: hideMark });
           }
         }
-      }
 
-      collected.sort((a, b) => a.from - b.from || a.to - b.to);
+        collected.sort((a, b) => a.from - b.from || a.to - b.to);
 
-      const builder = new RangeSetBuilder<Decoration>();
-      for (const { from, to, value } of collected) {
-        builder.add(from, to, value);
+        const builder = new RangeSetBuilder<Decoration>();
+        for (const { from, to, value } of collected) {
+          builder.add(from, to, value);
+        }
+        return builder.finish();
+      } catch (error) {
+        console.error("wikilinkDecorations: _buildDecorations failed", error);
+        return Decoration.none;
       }
-      return builder.finish();
     }
   },
   {

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useReducer, useRef, useState } from "react";
+import { useCallback, useEffect, useReducer, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import FileTree, { type FileTreeEntry } from "../components/FileTree";
 import TabBar, { type Tab } from "../components/TabBar";
@@ -6,6 +6,8 @@ import MarkdownEditor from "../components/MarkdownEditor";
 import VaultSwitcher from "../components/VaultSwitcher";
 import AppLayout from "../components/AppLayout";
 import { useKeybindings } from "../hooks/useKeybindings";
+import { useCommandStore } from "../stores/commandStore";
+import { usePanelStore } from "../stores/panelStore";
 
 interface VaultEntry {
   name: string;
@@ -134,8 +136,7 @@ export default function EditorPage({
     dirtyPaths: new Set<string>(),
   });
 
-  // Kept as a ref so the keyboard handler never needs to re-register when content changes.
-  const saveRef = useRef<() => Promise<void>>(async () => {});
+  const { register, unregister } = useCommandStore();
 
   const fetchFileTree = useCallback(() => {
     invoke<FileTreeEntry[]>("get_file_tree", { vaultPath })
@@ -157,7 +158,7 @@ export default function EditorPage({
   useEffect(() => {
     invoke<{ vim_mode: boolean }>("get_settings")
       .then((settings) => setVimMode(settings.vim_mode))
-      .catch(() => {});
+      .catch((err) => console.error("Failed to load settings:", err));
   }, []);
 
   // Reset context folder when vault changes.
@@ -349,19 +350,48 @@ export default function EditorPage({
     [],
   );
 
-  saveRef.current = async () => {
-    if (!state.activeTabPath) return;
-    const content = state.fileContents[state.activeTabPath];
-    if (content === undefined) return;
-    try {
-      await invoke("write_file", { path: state.activeTabPath, content });
-      dispatch({ type: "mark_saved", path: state.activeTabPath });
-    } catch (err) {
-      console.error("Failed to save file:", err);
-    }
-  };
+  useEffect(() => {
+    register({
+      id: "editor.save",
+      label: "Save File",
+      execute: () => {
+        if (!state.activeTabPath) return;
+        const content = state.fileContents[state.activeTabPath];
+        if (content === undefined) return;
+        invoke("write_file", { path: state.activeTabPath, content })
+          .then(() =>
+            dispatch({ type: "mark_saved", path: state.activeTabPath! }),
+          )
+          .catch((err) => console.error("Failed to save file:", err));
+      },
+    });
 
-  useKeybindings(saveRef);
+    register({
+      id: "tab.close",
+      label: "Close Tab",
+      execute: () => {
+        if (state.activeTabPath) {
+          dispatch({ type: "close_tab", path: state.activeTabPath });
+        }
+      },
+    });
+
+    return () => {
+      unregister("editor.save");
+      unregister("tab.close");
+    };
+  }, [state.activeTabPath, state.fileContents, register, unregister]);
+
+  useEffect(() => {
+    register({
+      id: "view.toggleSidebar",
+      label: "Toggle Sidebar",
+      execute: () => usePanelStore.getState().togglePanel("fileTree"),
+    });
+    return () => unregister("view.toggleSidebar");
+  }, [register, unregister]);
+
+  useKeybindings();
 
   const activeContent =
     state.activeTabPath !== null
@@ -370,7 +400,7 @@ export default function EditorPage({
 
   const sidebar = (
     <>
-      <div className="flex items-center justify-between border-b border-surface px-3 py-2 pt-8">
+      <div className="flex items-center justify-between border-b border-surface px-3 py-2 pt-[38px]">
         <span
           data-tauri-drag-region
           className="flex-1 truncate text-sm font-medium text-text-primary"
@@ -450,7 +480,15 @@ export default function EditorPage({
           </div>
         )}
         {treeError ? (
-          <p className="px-3 py-2 text-xs text-red-400">{treeError}</p>
+          <div className="px-3 py-2">
+            <p className="text-xs text-red-400">{treeError}</p>
+            <button
+              onClick={onClose}
+              className="mt-2 text-xs text-accent hover:underline"
+            >
+              Return to vault picker
+            </button>
+          </div>
         ) : (
           <FileTree
             entries={fileTree}

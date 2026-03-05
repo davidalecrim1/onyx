@@ -19,7 +19,7 @@ export default function App() {
   const refreshKnownVaults = useCallback(() => {
     invoke<VaultEntry[]>("get_known_vaults")
       .then(setKnownVaults)
-      .catch(() => {});
+      .catch((err) => console.error("Failed to load known vaults:", err));
   }, []);
 
   useEffect(() => {
@@ -38,7 +38,9 @@ export default function App() {
           refreshKnownVaults();
         }
       })
-      .catch(() => {});
+      .catch((err) =>
+        console.error("Failed to restore last active vault:", err),
+      );
   }, []);
 
   function handleVaultOpened(vaultPath: string, vaultName: string) {
@@ -50,11 +52,11 @@ export default function App() {
     async (path: string, name: string) => {
       try {
         await invoke("open_vault", { path });
-      } catch {
-        // Already registered — open_vault is idempotent.
+        refreshKnownVaults();
+        setView({ kind: "editor", vaultPath: path, vaultName: name });
+      } catch (err) {
+        console.error("Failed to switch vault:", err);
       }
-      refreshKnownVaults();
-      setView({ kind: "editor", vaultPath: path, vaultName: name });
     },
     [refreshKnownVaults],
   );

@@ -112,16 +112,20 @@ function FileTreeNode({
             if (activeDrag) setIsDragTarget(true);
           }}
           onPointerLeave={() => setIsDragTarget(false)}
-          className={`flex w-full cursor-pointer items-center gap-1.5 rounded px-2 py-0.5 text-left text-text-secondary transition-colors hover:bg-surface-hover hover:text-text-primary ${
+          className={`flex w-full cursor-pointer items-center gap-1.5 rounded px-2 py-1 text-left text-text-secondary transition-colors hover:bg-surface-hover hover:text-text-primary ${
             isDragTarget ? "bg-surface-hover ring-1 ring-accent" : ""
           }`}
           style={{ paddingLeft: `${8 + indent}px` }}
         >
-          <span className="text-xs">{collapsed ? "▶" : "▼"}</span>
-          {entry.name}
+          <span className="text-xs shrink-0">{collapsed ? "▶" : "▼"}</span>
+          <span className="truncate">{entry.name}</span>
         </div>
         {!collapsed && (
-          <div>
+          <div className="relative">
+            <div
+              className="absolute top-0 bottom-0 w-px"
+              style={{ left: `${12 + indent}px`, backgroundColor: "#454a56" }}
+            />
             {entry.children.map((child) => (
               <FileTreeNode
                 key={child.path}
@@ -201,14 +205,14 @@ function FileTreeNode({
     <button
       onPointerDown={handlePointerDown}
       onClick={() => onFileClick(entry.path)}
-      className={`flex w-full items-center rounded px-2 py-0.5 text-left transition-colors ${
+      className={`flex w-full items-center rounded px-2 py-1 text-left transition-colors ${
         isActive
           ? "bg-surface-active text-text-primary"
           : "text-text-secondary hover:bg-surface-hover hover:text-text-primary"
       }`}
       style={{ paddingLeft: `${20 + indent}px` }}
     >
-      {entry.name}
+      <span className="truncate">{entry.name}</span>
     </button>
   );
 }

@@ -1,5 +1,7 @@
 use std::path::{Path, PathBuf};
 
+use log::info;
+
 use crate::error::OnyxError;
 use crate::vault_config::{ensure_vault_config, VaultConfig};
 
@@ -15,6 +17,7 @@ impl Vault {
     pub fn create(path: &Path) -> Result<Self, OnyxError> {
         std::fs::create_dir_all(path)?;
         let config = ensure_vault_config(path)?;
+        info!("Created vault at {}", path.display());
         Ok(Self {
             root: path.to_path_buf(),
             config,
@@ -24,6 +27,7 @@ impl Vault {
     /// Opens an existing directory as a vault, creating config if absent.
     pub fn open(path: &Path) -> Result<Self, OnyxError> {
         let config = ensure_vault_config(path)?;
+        info!("Opened vault at {}", path.display());
         Ok(Self {
             root: path.to_path_buf(),
             config,

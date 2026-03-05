@@ -1,0 +1,5 @@
+[
+  { "command": "editor.save", "key": "Cmd+S" },
+  { "command": "view.toggleSidebar", "key": "Cmd+B" },
+  { "command": "tab.close", "key": "Cmd+W" }
+]

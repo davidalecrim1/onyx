@@ -1,6 +1,7 @@
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 
+use log::{error, info, warn};
 use serde::{Deserialize, Serialize};
 use tauri::State;
 
@@ -50,6 +51,7 @@ pub fn create_vault(path: String) -> Result<VaultInfo, String> {
     let vault_path = PathBuf::from(&path);
     let vault = Vault::create(&vault_path).map_err(|e| e.to_string())?;
     register_vault(vault_path).map_err(|e| e.to_string())?;
+    info!("Created vault: {}", path);
     Ok(VaultInfo {
         name: vault.config.name,
         root: vault.root.to_string_lossy().to_string(),
@@ -62,6 +64,7 @@ pub fn open_vault(path: String) -> Result<VaultInfo, String> {
     let vault_path = PathBuf::from(&path);
     let vault = Vault::open(&vault_path).map_err(|e| e.to_string())?;
     register_vault(vault_path).map_err(|e| e.to_string())?;
+    info!("Opened vault: {}", path);
     Ok(VaultInfo {
         name: vault.config.name,
         root: vault.root.to_string_lossy().to_string(),
@@ -72,20 +75,29 @@ pub fn open_vault(path: String) -> Result<VaultInfo, String> {
 #[tauri::command]
 pub fn get_file_tree(vault_path: String) -> Result<Vec<FileTreeEntryDto>, String> {
     let root = Path::new(&vault_path);
-    let entries = scan_file_tree(root).map_err(|e| e.to_string())?;
+    let entries = scan_file_tree(root).map_err(|e| {
+        error!("Failed to scan file tree at {}: {e}", vault_path);
+        e.to_string()
+    })?;
     Ok(entries.iter().map(entry_to_dto).collect())
 }
 
 /// Reads and returns the UTF-8 contents of a file.
 #[tauri::command]
 pub fn read_file(path: String) -> Result<String, String> {
-    std::fs::read_to_string(&path).map_err(|e| e.to_string())
+    std::fs::read_to_string(&path).map_err(|e| {
+        error!("Failed to read file {}: {e}", path);
+        e.to_string()
+    })
 }
 
 /// Writes content to a file, creating it if it doesn't exist.
 #[tauri::command]
 pub fn write_file(path: String, content: String) -> Result<(), String> {
-    std::fs::write(&path, content).map_err(|e| e.to_string())
+    std::fs::write(&path, content).map_err(|e| {
+        error!("Failed to write file {}: {e}", path);
+        e.to_string()
+    })
 }
 
 /// Maximizes the window — called immediately after a vault is opened.
@@ -113,7 +125,10 @@ pub fn create_folder(vault_path: String, name: String) -> Result<String, String>
 /// Loads the saved session (open tabs, active tab) for the given vault.
 #[tauri::command]
 pub fn load_vault_session_cmd(vault_path: String) -> Result<VaultSession, String> {
-    load_vault_session(Path::new(&vault_path)).map_err(|e| e.to_string())
+    load_vault_session(Path::new(&vault_path)).map_err(|e| {
+        warn!("Failed to load vault session for {}: {e}", vault_path);
+        e.to_string()
+    })
 }
 
 /// Persists the session (open tabs, active tab) for the given vault.
@@ -127,7 +142,10 @@ pub fn save_vault_session_cmd(
         open_tabs,
         active_tab,
     };
-    save_vault_session(Path::new(&vault_path), &session).map_err(|e| e.to_string())
+    save_vault_session(Path::new(&vault_path), &session).map_err(|e| {
+        warn!("Failed to save vault session for {}: {e}", vault_path);
+        e.to_string()
+    })
 }
 
 /// Returns the recommended default directory for storing new vaults.
@@ -206,11 +224,19 @@ pub fn get_last_active_vault() -> Result<Option<VaultEntry>, String> {
     let Some(path) = config.last_active_vault else {
         return Ok(None);
     };
-    let vault = Vault::open(&path).map_err(|e| e.to_string())?;
-    Ok(Some(VaultEntry {
-        name: vault.config.name,
-        path: path.to_string_lossy().to_string(),
-    }))
+    match Vault::open(&path) {
+        Ok(vault) => {
+            info!("Restoring last active vault: {}", path.display());
+            Ok(Some(VaultEntry {
+                name: vault.config.name,
+                path: path.to_string_lossy().to_string(),
+            }))
+        }
+        Err(err) => {
+            warn!("Last active vault inaccessible ({}): {err}", path.display());
+            Ok(None)
+        }
+    }
 }
 
 /// Returns all known vaults from the global config.
@@ -241,8 +267,12 @@ pub fn build_tag_index(
     vault_path: String,
     state: State<'_, Mutex<Option<TagIndex>>>,
 ) -> Result<(), String> {
-    let index = TagIndex::build(Path::new(&vault_path)).map_err(|e| e.to_string())?;
+    let index = TagIndex::build(Path::new(&vault_path)).map_err(|e| {
+        error!("Failed to build tag index for {}: {e}", vault_path);
+        e.to_string()
+    })?;
     *state.lock().map_err(|e| e.to_string())? = Some(index);
+    info!("Tag index built for {}", vault_path);
     Ok(())
 }
 
