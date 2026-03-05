@@ -4,7 +4,7 @@ import ResizablePanel from "./ResizablePanel";
 import { usePanelStore } from "../stores/panelStore";
 import { getKeybindingLabel } from "../hooks/useKeybindings";
 
-const TRAFFIC_LIGHT_WIDTH = 78;
+const TRAFFIC_LIGHT_WIDTH = 156;
 const TRAFFIC_LIGHT_HEIGHT = 38;
 
 interface Props {
@@ -31,22 +31,21 @@ export default function AppLayout({ sidebar, tabBar, children }: Props) {
 
       <div className="flex flex-1 flex-col overflow-hidden">
         <div
-          className="flex items-center border-b border-surface"
-          style={{ paddingTop: TRAFFIC_LIGHT_HEIGHT }}
+          className="flex shrink-0 items-end border-b border-surface"
+          style={{
+            height: TRAFFIC_LIGHT_HEIGHT,
+            paddingLeft: sidebarOpen ? 0 : TRAFFIC_LIGHT_WIDTH,
+          }}
         >
-          {!sidebarOpen && (
-            <div
-              className="shrink-0"
-              style={{ width: TRAFFIC_LIGHT_WIDTH }}
-              aria-hidden="true"
+          <div className="flex items-center self-stretch px-1">
+            <PanelToggleButton
+              panelId="fileTree"
+              tooltip={`Toggle sidebar (${getKeybindingLabel("view.toggleSidebar") ?? "unbound"})`}
             />
-          )}
-          <PanelToggleButton
-            panelId="fileTree"
-            tooltip={`Toggle sidebar (${getKeybindingLabel("view.toggleSidebar") ?? "unbound"})`}
-          />
+          </div>
           {tabBar}
         </div>
+
         {children}
       </div>
     </div>

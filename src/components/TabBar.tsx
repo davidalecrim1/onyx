@@ -20,7 +20,8 @@ export default function TabBar({
 }: Props) {
   return (
     <div
-      className={`flex min-w-0 flex-1 border-b border-surface bg-background px-2 pt-1.5 ${tabs.length === 0 ? "h-9" : ""}`}
+      data-tauri-drag-region
+      className="flex h-full min-w-0 flex-1 items-end bg-background px-2"
     >
       <div className="flex min-w-0 overflow-hidden">
         {tabs.map((tab) => {
