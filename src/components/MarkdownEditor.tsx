@@ -18,7 +18,7 @@ import {
 import {
   imageConfigField,
   setImageConfig,
-  imageViewPlugin,
+  imageDecorations,
 } from "../extensions/imageDecorations";
 
 const onyxTheme = EditorView.theme(
@@ -26,7 +26,7 @@ const onyxTheme = EditorView.theme(
     "&": { backgroundColor: "#282c33", color: "#dce0e5", height: "auto" },
     "&.cm-focused": { outline: "none" },
     ".cm-scroller": { overflow: "visible" },
-    ".cm-content": { caretColor: "#74ade8" },
+    ".cm-content": { caretColor: "#74ade8", lineHeight: "1.8" },
     ".cm-cursor": { borderLeftColor: "#74ade8" },
     ".cm-selectionBackground, ::selection": { backgroundColor: "#454a56" },
     ".cm-activeLine": { backgroundColor: "transparent" },
@@ -141,13 +141,14 @@ export default function MarkdownEditor({
     () => [
       ...(vimMode ? [vim()] : []),
       markdown({ extensions: [TaskList, GFM, Strikethrough] }),
+      EditorView.lineWrapping,
       onyxTheme,
       markdownDecorations,
       tagAutocomplete(tags),
       wikilinkConfigField,
       wikilinkViewPlugin,
       imageConfigField,
-      imageViewPlugin,
+      ...imageDecorations,
     ],
     [vimMode, tags],
   );
@@ -160,7 +161,26 @@ export default function MarkdownEditor({
 
   return (
     <div className="flex h-full justify-center overflow-y-auto bg-background">
-      <div className="w-full max-w-2xl px-8 py-6">
+      <div className="w-full max-w-[806px] px-8 py-6">
+        {filePath && vaultPath && (() => {
+          const relative = filePath.startsWith(vaultPath)
+            ? filePath.slice(vaultPath.length + 1)
+            : filePath;
+          const segments = relative.split("/");
+          const fileName = segments[segments.length - 1];
+          return (
+            <div className="mb-4 text-center text-sm text-text-secondary">
+              {segments.length > 1 ? segments.map((segment, index) => (
+                <span key={index}>
+                  {index > 0 && <span className="mx-1 opacity-50">/</span>}
+                  {index === segments.length - 1
+                    ? <span className="text-text-primary">{segment}</span>
+                    : segment}
+                </span>
+              )) : <span className="text-text-primary">{fileName}</span>}
+            </div>
+          );
+        })()}
         {filePath && (
           <input
             value={titleValue}
@@ -205,7 +225,7 @@ export default function MarkdownEditor({
             highlightSelectionMatches: true,
             syntaxHighlighting: false,
           }}
-          style={{ fontSize: "18px" }}
+          style={{ fontSize: "16px" }}
         />
       </div>
     </div>
