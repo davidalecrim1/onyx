@@ -38,6 +38,7 @@ interface EditorState {
 type EditorAction =
   | { type: "open_file"; path: string; name: string; content: string }
   | { type: "close_tab"; path: string }
+  | { type: "close_all_tabs" }
   | { type: "activate_tab"; path: string }
   | { type: "update_content"; path: string; content: string }
   | { type: "mark_saved"; path: string }
@@ -88,6 +89,13 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
       dirty.delete(action.path);
       return { ...state, dirtyPaths: dirty };
     }
+    case "close_all_tabs":
+      return {
+        tabs: [],
+        activeTabPath: null,
+        fileContents: {},
+        dirtyPaths: new Set<string>(),
+      };
     case "rename_file": {
       const tabs = state.tabs.map((tab) =>
         tab.path === action.oldPath
@@ -378,9 +386,16 @@ export default function EditorPage({
       },
     });
 
+    register({
+      id: "tab.closeAll",
+      label: "Close All Tabs",
+      execute: () => dispatch({ type: "close_all_tabs" }),
+    });
+
     return () => {
       unregister("editor.save");
       unregister("tab.close");
+      unregister("tab.closeAll");
     };
   }, [state.activeTabPath, state.fileContents, register, unregister]);
 

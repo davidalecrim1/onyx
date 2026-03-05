@@ -21,9 +21,15 @@ use commands::{
 };
 use tag_index::TagIndex;
 use tauri_plugin_log::{Target, TargetKind};
+use tauri_plugin_prevent_default::Flags;
 
 fn main() {
     tauri::Builder::default()
+        .plugin(
+            tauri_plugin_prevent_default::Builder::new()
+                .with_flags(Flags::RELOAD)
+                .build(),
+        )
         .plugin(
             tauri_plugin_log::Builder::new()
                 .targets([

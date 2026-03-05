@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useCommandStore } from "../stores/commandStore";
 import macBindings from "../keybindings.mac.json";
 import linuxBindings from "../keybindings.linux.json";
@@ -15,6 +15,12 @@ interface ParsedBinding {
   alt: boolean;
 }
 
+interface ParsedChordBinding {
+  command: string;
+  first: ParsedBinding;
+  second: ParsedBinding;
+}
+
 function parseBinding(raw: string): Omit<ParsedBinding, "command"> {
   const parts = raw.split("+");
   const key = parts[parts.length - 1].toLowerCase();
@@ -27,7 +33,7 @@ function parseBinding(raw: string): Omit<ParsedBinding, "command"> {
   };
 }
 
-function matchesBinding(event: KeyboardEvent, binding: ParsedBinding): boolean {
+function matchesBinding(event: KeyboardEvent, binding: Omit<ParsedBinding, "command">): boolean {
   if (event.key.toLowerCase() !== binding.key) return false;
   if (binding.cmd !== event.metaKey) return false;
   if (binding.ctrl !== event.ctrlKey) return false;
@@ -36,16 +42,59 @@ function matchesBinding(event: KeyboardEvent, binding: ParsedBinding): boolean {
   return true;
 }
 
-/// Listens for global keydown events and dispatches matching commands through the command store.
-export function useKeybindings() {
-  useEffect(() => {
-    const parsed: ParsedBinding[] = keybindings.map((entry) => ({
-      command: entry.command,
-      ...parseBinding(entry.key),
-    }));
+type RawBinding = { command: string; key: string };
 
+function isChord(raw: string): boolean {
+  return raw.includes(" ");
+}
+
+const singleBindings: ParsedBinding[] = (keybindings as RawBinding[])
+  .filter((entry) => !isChord(entry.key))
+  .map((entry) => ({ command: entry.command, ...parseBinding(entry.key) }));
+
+const chordBindings: ParsedChordBinding[] = (keybindings as RawBinding[])
+  .filter((entry) => isChord(entry.key))
+  .map((entry) => {
+    const [first, second] = entry.key.split(" ");
+    return {
+      command: entry.command,
+      first: { command: "", ...parseBinding(first) },
+      second: { command: "", ...parseBinding(second) },
+    };
+  });
+
+/// Listens for global keydown events and dispatches matching commands through the command store.
+/// Supports both single bindings and two-key chord sequences (e.g., "Cmd+R W").
+export function useKeybindings() {
+  const pendingChordRef = useRef<ParsedChordBinding[] | null>(null);
+
+  useEffect(() => {
     function handler(event: KeyboardEvent) {
-      for (const binding of parsed) {
+      // If we're waiting for the second key of a chord, check for matches.
+      if (pendingChordRef.current !== null) {
+        const matched = pendingChordRef.current.find((chord) =>
+          matchesBinding(event, chord.second),
+        );
+        pendingChordRef.current = null;
+        if (matched) {
+          event.preventDefault();
+          useCommandStore.getState().execute(matched.command);
+        }
+        return;
+      }
+
+      // Check if this key starts any chord sequence.
+      const chordStarters = chordBindings.filter((chord) =>
+        matchesBinding(event, chord.first),
+      );
+      if (chordStarters.length > 0) {
+        event.preventDefault();
+        pendingChordRef.current = chordStarters;
+        return;
+      }
+
+      // Fall through to single bindings.
+      for (const binding of singleBindings) {
         if (!matchesBinding(event, binding)) continue;
         event.preventDefault();
         useCommandStore.getState().execute(binding.command);
@@ -60,6 +109,8 @@ export function useKeybindings() {
 
 /// Looks up the key combo for a command ID and returns the label as written in the JSON, or null if unbound.
 export function getKeybindingLabel(commandId: string): string | null {
-  const entry = keybindings.find((binding) => binding.command === commandId);
+  const entry = (keybindings as RawBinding[]).find(
+    (binding) => binding.command === commandId,
+  );
   return entry?.key ?? null;
 }
