@@ -1,7 +1,10 @@
-.PHONY: install dev build test lint check format clean
+.PHONY: install install-tools dev build test lint check format clean coverage coverage-frontend coverage-backend
 
 install:
 	npm install
+
+install-tools:
+	cargo install cargo-llvm-cov
 
 dev:
 	npm run tauri dev
@@ -22,6 +25,14 @@ check:
 format:
 	cd src-tauri && cargo fmt
 	npx prettier --write src/
+
+coverage-frontend:
+	npm run coverage
+
+coverage-backend:
+	cd src-tauri && cargo llvm-cov --html && cargo llvm-cov report
+
+coverage: coverage-frontend coverage-backend
 
 clean:
 	cd src-tauri && cargo clean
