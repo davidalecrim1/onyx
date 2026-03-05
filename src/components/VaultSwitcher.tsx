@@ -81,15 +81,14 @@ export default function VaultSwitcher({
       )}
       <button
         onClick={() => setOpen((prev) => !prev)}
-        className="flex w-full items-center justify-between px-3 py-2 text-sm text-text-secondary transition-colors hover:bg-surface hover:text-text-primary"
+        className="relative flex w-full items-center justify-center px-3 py-2 text-sm text-text-secondary transition-colors hover:bg-surface hover:text-text-primary"
       >
-        <span className="truncate">{currentVaultName}</span>
         <svg
           width="12"
           height="12"
           viewBox="0 0 12 12"
           fill="none"
-          className={`ml-2 shrink-0 transition-transform ${open ? "rotate-180" : ""}`}
+          className={`absolute right-3 shrink-0 transition-transform ${open ? "rotate-180" : ""}`}
         >
           <path
             d="M2 4l4 4 4-4"
@@ -99,6 +98,7 @@ export default function VaultSwitcher({
             strokeLinejoin="round"
           />
         </svg>
+        <span className="truncate">{currentVaultName}</span>
       </button>
     </div>
   );
