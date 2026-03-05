@@ -1,11 +1,14 @@
 {
   "identifier": "default",
   "description": "Default capabilities for Onyx",
-  "windows": ["main"],
+  "windows": ["main", "vault-*", "welcome"],
   "permissions": [
     "core:default",
     "core:window:allow-maximize",
     "core:window:allow-start-dragging",
+    "core:window:allow-close",
+    "core:window:allow-set-focus",
+    "core:window:allow-create",
     "dialog:allow-open",
     "log:default"
   ]

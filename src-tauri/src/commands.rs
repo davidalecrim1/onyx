@@ -1,9 +1,12 @@
+use std::collections::hash_map::DefaultHasher;
+use std::collections::HashMap;
+use std::hash::{Hash, Hasher};
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 
 use log::{error, info, warn};
 use serde::{Deserialize, Serialize};
-use tauri::State;
+use tauri::{AppHandle, Manager, State, TitleBarStyle, WebviewUrl, WebviewWindowBuilder};
 
 use crate::file_tree::{scan_file_tree, FileTreeEntry};
 use crate::global_config::{load_global_config, register_vault, save_global_config, GlobalConfig};
@@ -265,33 +268,40 @@ pub fn get_known_vaults() -> Result<Vec<VaultEntry>, String> {
 #[tauri::command]
 pub fn build_tag_index(
     vault_path: String,
-    state: State<'_, Mutex<Option<TagIndex>>>,
+    state: State<'_, Mutex<HashMap<PathBuf, TagIndex>>>,
 ) -> Result<(), String> {
+    let path = PathBuf::from(&vault_path);
     let index = TagIndex::build(Path::new(&vault_path)).map_err(|e| {
         error!("Failed to build tag index for {}: {e}", vault_path);
         e.to_string()
     })?;
-    *state.lock().map_err(|e| e.to_string())? = Some(index);
+    state.lock().map_err(|e| e.to_string())?.insert(path, index);
     info!("Tag index built for {}", vault_path);
     Ok(())
 }
 
 /// Returns all known tags across the vault; returns an empty list if the index has not been built.
 #[tauri::command]
-pub fn get_tags(state: State<'_, Mutex<Option<TagIndex>>>) -> Result<Vec<String>, String> {
+pub fn get_tags(
+    vault_path: String,
+    state: State<'_, Mutex<HashMap<PathBuf, TagIndex>>>,
+) -> Result<Vec<String>, String> {
     let guard = state.lock().map_err(|e| e.to_string())?;
-    Ok(guard.as_ref().map_or_else(Vec::new, TagIndex::all_tags))
+    let path = PathBuf::from(&vault_path);
+    Ok(guard.get(&path).map_or_else(Vec::new, TagIndex::all_tags))
 }
 
 /// Updates the tag index for a single file after it has been saved.
 #[tauri::command]
 pub fn update_file_tags(
+    vault_path: String,
     file_path: String,
     content: String,
-    state: State<'_, Mutex<Option<TagIndex>>>,
+    state: State<'_, Mutex<HashMap<PathBuf, TagIndex>>>,
 ) -> Result<(), String> {
     let mut guard = state.lock().map_err(|e| e.to_string())?;
-    if let Some(index) = guard.as_mut() {
+    let path = PathBuf::from(&vault_path);
+    if let Some(index) = guard.get_mut(&path) {
         index.update_file(&file_path, &content);
     }
     Ok(())
@@ -331,6 +341,61 @@ pub fn resolve_asset_path(
         .unwrap_or_else(|| Path::new(&vault_path));
     let resolved = base.join(&relative_path);
     Ok(resolved.to_string_lossy().to_string())
+}
+
+fn vault_window_label(path: &str) -> String {
+    let mut hasher = DefaultHasher::new();
+    path.hash(&mut hasher);
+    format!("vault-{:x}", hasher.finish())
+}
+
+/// Opens (or focuses) a native window for the given vault path.
+#[tauri::command]
+pub fn open_vault_window(app: AppHandle, path: String) -> Result<(), String> {
+    let label = vault_window_label(&path);
+
+    if let Some(existing) = app.get_webview_window(&label) {
+        existing.set_focus().map_err(|e| e.to_string())?;
+        return Ok(());
+    }
+
+    let encoded = urlencoding::encode(&path);
+    let url = WebviewUrl::App(format!("index.html?vault={encoded}").into());
+
+    let window = WebviewWindowBuilder::new(&app, &label, url)
+        .title("Onyx")
+        .inner_size(1200.0, 800.0)
+        .min_inner_size(800.0, 600.0)
+        .title_bar_style(TitleBarStyle::Overlay)
+        .build()
+        .map_err(|e| e.to_string())?;
+
+    window.maximize().map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+/// Opens a welcome window for vault selection.
+#[tauri::command]
+pub fn open_welcome_window(app: AppHandle) -> Result<(), String> {
+    let label = "welcome";
+
+    if let Some(existing) = app.get_webview_window(label) {
+        existing.set_focus().map_err(|e| e.to_string())?;
+        return Ok(());
+    }
+
+    let url = WebviewUrl::App("index.html".into());
+
+    let window = WebviewWindowBuilder::new(&app, label, url)
+        .title("Onyx")
+        .inner_size(1200.0, 800.0)
+        .min_inner_size(800.0, 600.0)
+        .title_bar_style(TitleBarStyle::Overlay)
+        .build()
+        .map_err(|e| e.to_string())?;
+
+    window.maximize().map_err(|e| e.to_string())?;
+    Ok(())
 }
 
 #[cfg(test)]

@@ -25,6 +25,7 @@ interface Props {
   knownVaults: VaultEntry[];
   onClose: () => void;
   onSwitchVault: (path: string, name: string) => void;
+  onOpenWelcome: () => void;
 }
 
 interface EditorState {
@@ -119,6 +120,7 @@ export default function EditorPage({
   knownVaults,
   onClose,
   onSwitchVault,
+  onOpenWelcome,
 }: Props) {
   const [fileTree, setFileTree] = useState<FileTreeEntry[]>([]);
   const [treeError, setTreeError] = useState<string | null>(null);
@@ -505,7 +507,7 @@ export default function EditorPage({
         currentVaultPath={vaultPath}
         vaults={knownVaults}
         onSwitch={onSwitchVault}
-        onOpenWelcome={onClose}
+        onOpenWelcome={onOpenWelcome}
       />
     </>
   );

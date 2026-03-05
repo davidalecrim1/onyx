@@ -70,7 +70,7 @@ export default function MarkdownEditor({
   // Load the current tag list whenever a vault becomes available.
   useEffect(() => {
     if (!vaultPath) return;
-    invoke<string[]>("get_tags")
+    invoke<string[]>("get_tags", { vaultPath })
       .then(setTags)
       .catch(() => {});
   }, [vaultPath]);
@@ -126,15 +126,17 @@ export default function MarkdownEditor({
       if (!filePath) return;
       if (debounceRef.current) clearTimeout(debounceRef.current);
       debounceRef.current = setTimeout(() => {
-        invoke("update_file_tags", { filePath, content: value }).catch(
-          () => {},
-        );
-        invoke<string[]>("get_tags")
+        invoke("update_file_tags", {
+          vaultPath,
+          filePath,
+          content: value,
+        }).catch(() => {});
+        invoke<string[]>("get_tags", { vaultPath })
           .then(setTags)
           .catch(() => {});
       }, 800);
     },
-    [onChange, filePath],
+    [onChange, filePath, vaultPath],
   );
 
   const extensions = useMemo(
@@ -162,26 +164,36 @@ export default function MarkdownEditor({
   return (
     <div className="flex h-full justify-center overflow-y-auto bg-background">
       <div className="w-full max-w-[806px] px-8 py-6">
-        {filePath && vaultPath && (() => {
-          const normalizedVault = vaultPath.endsWith("/") ? vaultPath : vaultPath + "/";
-          const relative = filePath.startsWith(normalizedVault)
-            ? filePath.slice(normalizedVault.length)
-            : filePath;
-          const segments = relative.split("/");
-          const fileName = segments[segments.length - 1];
-          return (
-            <div className="mb-4 text-center text-sm text-text-secondary">
-              {segments.length > 1 ? segments.map((segment, index) => (
-                <span key={index}>
-                  {index > 0 && <span className="mx-1 opacity-50">/</span>}
-                  {index === segments.length - 1
-                    ? <span className="text-text-primary">{segment}</span>
-                    : segment}
-                </span>
-              )) : <span className="text-text-primary">{fileName}</span>}
-            </div>
-          );
-        })()}
+        {filePath &&
+          vaultPath &&
+          (() => {
+            const normalizedVault = vaultPath.endsWith("/")
+              ? vaultPath
+              : vaultPath + "/";
+            const relative = filePath.startsWith(normalizedVault)
+              ? filePath.slice(normalizedVault.length)
+              : filePath;
+            const segments = relative.split("/");
+            const fileName = segments[segments.length - 1];
+            return (
+              <div className="mb-4 text-center text-sm text-text-secondary">
+                {segments.length > 1 ? (
+                  segments.map((segment, index) => (
+                    <span key={index}>
+                      {index > 0 && <span className="mx-1 opacity-50">/</span>}
+                      {index === segments.length - 1 ? (
+                        <span className="text-text-primary">{segment}</span>
+                      ) : (
+                        segment
+                      )}
+                    </span>
+                  ))
+                ) : (
+                  <span className="text-text-primary">{fileName}</span>
+                )}
+              </div>
+            );
+          })()}
         {filePath && (
           <input
             value={titleValue}

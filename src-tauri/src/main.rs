@@ -8,14 +8,16 @@ mod tag_index;
 mod vault;
 mod vault_config;
 
+use std::collections::HashMap;
+use std::path::PathBuf;
 use std::sync::Mutex;
 
 use commands::{
     build_tag_index, create_file, create_folder, create_vault, get_default_vault_dir,
     get_file_tree, get_known_vaults, get_last_active_vault, get_settings, get_tags,
-    load_vault_session_cmd, maximize_window, move_file, open_vault, read_file, rename_file,
-    resolve_asset_path, resolve_wikilink, save_settings, save_vault_session_cmd, update_file_tags,
-    write_file,
+    load_vault_session_cmd, maximize_window, move_file, open_vault, open_vault_window,
+    open_welcome_window, read_file, rename_file, resolve_asset_path, resolve_wikilink,
+    save_settings, save_vault_session_cmd, update_file_tags, write_file,
 };
 use tag_index::TagIndex;
 use tauri_plugin_log::{Target, TargetKind};
@@ -33,7 +35,7 @@ fn main() {
         )
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
-        .manage(Mutex::new(Option::<TagIndex>::None))
+        .manage(Mutex::new(HashMap::<PathBuf, TagIndex>::new()))
         .invoke_handler(tauri::generate_handler![
             create_vault,
             open_vault,
@@ -57,6 +59,8 @@ fn main() {
             update_file_tags,
             resolve_wikilink,
             resolve_asset_path,
+            open_vault_window,
+            open_welcome_window,
         ])
         .run(tauri::generate_context!())
         .expect("error running tauri app");
