@@ -1,3 +1,35 @@
+@font-face {
+  font-family: "Zed Sans Extended";
+  src: url("./assets/fonts/zed-sans-extended.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Zed Sans Extended";
+  src: url("./assets/fonts/zed-sans-extendedbold.ttf") format("truetype");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Zed Mono Extended";
+  src: url("./assets/fonts/zed-mono-extended.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Zed Mono Extended";
+  src: url("./assets/fonts/zed-mono-extendedbold.ttf") format("truetype");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -13,6 +45,7 @@ body,
   margin: 0;
   padding: 0;
   font-size: 18px;
+  font-family: "Zed Sans Extended", system-ui, sans-serif;
 }
 
 /* Markdown decoration classes */
@@ -66,13 +99,13 @@ body,
   background-color: #22262e;
   border-radius: 3px;
   padding: 0 3px;
-  font-family: monospace;
+  font-family: "Zed Mono Extended", monospace;
   font-size: 0.9em;
 }
 
 .cm-line.onyx-codeblock {
   background-color: #22262e;
-  font-family: monospace;
+  font-family: "Zed Mono Extended", monospace;
   font-size: 0.9em;
 }
 
@@ -217,4 +250,156 @@ body,
   border-radius: 999px;
   padding: 0.1em 0.7em;
   cursor: pointer;
+}
+
+.onyx-reading-view {
+  color: #dce0e5;
+  font-size: 16px;
+  line-height: 1.8;
+  font-family: "Zed Sans Extended", system-ui, sans-serif;
+}
+
+.onyx-reading-view h1 {
+  font-size: 2em;
+  font-weight: 700;
+  margin: 0.67em 0 0.4em;
+}
+.onyx-reading-view h2 {
+  font-size: 1.6em;
+  font-weight: 700;
+  margin: 0.75em 0 0.4em;
+}
+.onyx-reading-view h3 {
+  font-size: 1.35em;
+  font-weight: 600;
+  margin: 0.83em 0 0.4em;
+}
+.onyx-reading-view h4 {
+  font-size: 1.15em;
+  font-weight: 600;
+  margin: 1em 0 0.4em;
+}
+.onyx-reading-view h5 {
+  font-size: 1em;
+  font-weight: 600;
+  margin: 1em 0 0.4em;
+}
+.onyx-reading-view h6 {
+  font-size: 0.9em;
+  font-weight: 600;
+  color: #a9afbc;
+  margin: 1em 0 0.4em;
+}
+
+.onyx-reading-view p {
+  margin: 0.5em 0;
+}
+
+.onyx-reading-view strong {
+  font-weight: 700;
+}
+
+.onyx-reading-view em {
+  font-style: italic;
+}
+
+.onyx-reading-view del {
+  text-decoration: line-through;
+  color: #a9afbc;
+}
+
+.onyx-reading-view a {
+  color: #74ade8;
+  text-decoration: underline;
+}
+
+.onyx-reading-view code {
+  background-color: #22262e;
+  border-radius: 3px;
+  padding: 0 3px;
+  font-family: "Zed Mono Extended", monospace;
+  font-size: 0.9em;
+}
+
+.onyx-reading-view pre {
+  background-color: #22262e;
+  border-radius: 4px;
+  padding: 0.8em 1em;
+  margin: 0.5em 0;
+  overflow-x: auto;
+}
+
+.onyx-reading-view pre code {
+  background: none;
+  padding: 0;
+  font-family: "Zed Mono Extended", monospace;
+  font-size: 0.9em;
+}
+
+.onyx-reading-view ul,
+.onyx-reading-view ol {
+  margin: 0.5em 0;
+  padding-left: 1.5em;
+}
+
+.onyx-reading-view ul {
+  list-style: disc outside none;
+}
+
+.onyx-reading-view ol {
+  list-style: decimal outside none;
+}
+
+.onyx-reading-view li {
+  display: list-item;
+  margin: 0.2em 0;
+}
+
+.onyx-reading-view ul ul {
+  list-style-type: circle;
+}
+
+.onyx-reading-view ul ul ul {
+  list-style-type: square;
+}
+
+.onyx-reading-view blockquote {
+  border-left: 4px solid #454a56;
+  margin: 0.5em 0;
+  padding: 0.3em 0.8em;
+  color: #a9afbc;
+}
+
+.onyx-reading-view hr {
+  border: none;
+  border-top: 1px solid #454a56;
+  margin: 0.5em 0;
+}
+
+.onyx-reading-view table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 0.5em 0;
+}
+
+.onyx-reading-view th,
+.onyx-reading-view td {
+  border: 1px solid #454a56;
+  padding: 0.3em 0.6em;
+}
+
+.onyx-reading-view thead {
+  background-color: #22262e;
+  font-weight: 600;
+}
+
+.onyx-reading-view tbody tr:nth-child(even) {
+  background-color: #22262e;
+}
+
+.onyx-reading-view img {
+  max-width: 100%;
+  border-radius: 4px;
+  margin: 0.25em 0;
+  display: block;
 }

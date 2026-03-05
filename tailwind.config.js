@@ -3,6 +3,10 @@ export default {
   content: ["./index.html", "./src/**/*.{ts,tsx}"],
   theme: {
     extend: {
+      fontFamily: {
+        sans: ['"Zed Sans Extended"', "system-ui", "sans-serif"],
+        mono: ['"Zed Mono Extended"', "monospace"],
+      },
       colors: {
         background: "#282c33",
         surface: "#2f343e",

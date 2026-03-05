@@ -31,9 +31,9 @@ export default function AppLayout({ sidebar, tabBar, children }: Props) {
 
       <div className="flex flex-1 flex-col overflow-hidden">
         <div
-          className="flex shrink-0 items-end border-b border-surface"
+          className="flex shrink-0 items-end border-b border-surface pt-2"
           style={{
-            height: TRAFFIC_LIGHT_HEIGHT,
+            height: TRAFFIC_LIGHT_HEIGHT + 8,
             paddingLeft: sidebarOpen ? 0 : TRAFFIC_LIGHT_WIDTH,
           }}
         >
