@@ -25,10 +25,25 @@ import {
 
 const onyxTheme = EditorView.theme(
   {
-    "&": { backgroundColor: "#282c33", color: "#dce0e5", height: "100%", fontFamily: '"Zed Sans Extended", system-ui, sans-serif' },
+    "&": {
+      backgroundColor: "#282c33",
+      color: "#dce0e5",
+      height: "100%",
+      fontFamily: '"Inter", system-ui, sans-serif',
+    },
     "&.cm-focused": { outline: "none" },
     ".cm-scroller": { overflow: "auto" },
-    ".cm-content": { caretColor: "#74ade8", lineHeight: "1.8", maxWidth: "806px", width: "100%", paddingLeft: "2rem", paddingRight: "2rem", paddingBottom: "1.5rem", margin: "0 auto" },
+    ".cm-content": {
+      caretColor: "#74ade8",
+      lineHeight: "1.8",
+      maxWidth: "806px",
+      width: "100%",
+      paddingLeft: "2rem",
+      paddingRight: "2rem",
+      paddingBottom: "1.5rem",
+      margin: "0 auto",
+      fontFamily: '"Inter", system-ui, sans-serif',
+    },
     ".cm-cursor": { borderLeftColor: "#74ade8" },
     ".cm-selectionBackground, ::selection": { backgroundColor: "#454a56" },
     ".cm-activeLine": { backgroundColor: "transparent" },

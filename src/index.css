@@ -1,14 +1,22 @@
 @font-face {
-  font-family: "Zed Sans Extended";
-  src: url("./assets/fonts/zed-sans-extended.ttf") format("truetype");
+  font-family: "Inter";
+  src: url("./assets/fonts/inter-regular.woff2") format("woff2");
   font-weight: 400;
   font-style: normal;
   font-display: swap;
 }
 
 @font-face {
-  font-family: "Zed Sans Extended";
-  src: url("./assets/fonts/zed-sans-extendedbold.ttf") format("truetype");
+  font-family: "Inter";
+  src: url("./assets/fonts/inter-semibold.woff2") format("woff2");
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Inter";
+  src: url("./assets/fonts/inter-bold.woff2") format("woff2");
   font-weight: 700;
   font-style: normal;
   font-display: swap;
@@ -45,7 +53,7 @@ body,
   margin: 0;
   padding: 0;
   font-size: 18px;
-  font-family: "Zed Sans Extended", system-ui, sans-serif;
+  font-family: "Inter", system-ui, sans-serif;
 }
 
 /* Markdown decoration classes */
@@ -256,7 +264,7 @@ body,
   color: #dce0e5;
   font-size: 16px;
   line-height: 1.8;
-  font-family: "Zed Sans Extended", system-ui, sans-serif;
+  font-family: "Inter", system-ui, sans-serif;
 }
 
 .onyx-reading-view h1 {
