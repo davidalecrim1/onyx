@@ -31,19 +31,19 @@ export default function AppLayout({ sidebar, tabBar, children }: Props) {
 
       <div className="flex flex-1 flex-col overflow-hidden">
         <div
-          className="flex shrink-0 items-end border-b border-surface pt-2"
+          className="flex shrink-0 border-b border-surface"
           style={{
             height: TRAFFIC_LIGHT_HEIGHT + 8,
             paddingLeft: sidebarOpen ? 0 : TRAFFIC_LIGHT_WIDTH,
           }}
         >
-          <div className="flex items-center self-stretch px-1">
+          <div className="flex items-center px-1">
             <PanelToggleButton
               panelId="fileTree"
               tooltip={`Toggle sidebar (${getKeybindingLabel("view.toggleSidebar") ?? "unbound"})`}
             />
           </div>
-          {tabBar}
+          <div className="flex flex-1 items-end pt-2">{tabBar}</div>
         </div>
 
         {children}

@@ -22,14 +22,13 @@ import {
   setImageConfig,
   imageDecorations,
 } from "../extensions/imageDecorations";
-import { parentScrollIntoView } from "../extensions/parentScrollIntoView";
 
 const onyxTheme = EditorView.theme(
   {
-    "&": { backgroundColor: "#282c33", color: "#dce0e5", height: "auto", fontFamily: '"Zed Sans Extended", system-ui, sans-serif' },
+    "&": { backgroundColor: "#282c33", color: "#dce0e5", height: "100%", fontFamily: '"Zed Sans Extended", system-ui, sans-serif' },
     "&.cm-focused": { outline: "none" },
-    ".cm-scroller": { overflow: "visible" },
-    ".cm-content": { caretColor: "#74ade8", lineHeight: "1.8" },
+    ".cm-scroller": { overflow: "auto" },
+    ".cm-content": { caretColor: "#74ade8", lineHeight: "1.8", maxWidth: "806px", width: "100%", paddingLeft: "2rem", paddingRight: "2rem", paddingBottom: "1.5rem", margin: "0 auto" },
     ".cm-cursor": { borderLeftColor: "#74ade8" },
     ".cm-selectionBackground, ::selection": { backgroundColor: "#454a56" },
     ".cm-activeLine": { backgroundColor: "transparent" },
@@ -200,7 +199,6 @@ export default function MarkdownEditor({
       wikilinkViewPlugin,
       imageConfigField,
       ...imageDecorations,
-      parentScrollIntoView,
     ],
     [vimMode, tags],
   );
@@ -242,11 +240,10 @@ export default function MarkdownEditor({
     });
   }, [content]);
 
-  return (
-    <div className="flex h-full justify-center overflow-y-auto bg-background">
-      <div className="w-full max-w-[806px] px-8 py-6">
-        {filePath &&
-          vaultPath &&
+  const headerContent = filePath && (
+    <div className="flex justify-center bg-background shrink-0">
+      <div className="w-full max-w-[806px] px-8 pt-6">
+        {vaultPath &&
           (() => {
             const normalizedVault = vaultPath.endsWith("/")
               ? vaultPath
@@ -286,63 +283,74 @@ export default function MarkdownEditor({
               </div>
             );
           })()}
-        {filePath &&
-          (isEditing ? (
-            <input
-              value={titleValue}
-              onChange={(e) => setTitleValue(e.target.value)}
-              onBlur={commitRename}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  commitRename();
-                  editorRef.current?.view?.focus();
-                }
-                if (e.key === "Escape") {
-                  setTitleValue(fileStem);
-                }
-                if (e.key === "ArrowDown") {
-                  e.preventDefault();
-                  const view = editorRef.current?.view;
-                  if (view) {
-                    view.dispatch({
-                      selection: EditorSelection.cursor(0),
-                      scrollIntoView: true,
-                    });
-                    view.focus();
-                  }
-                }
-              }}
-              className="onyx-inline-title"
-              spellCheck={false}
-              aria-label="File name"
-            />
-          ) : (
-            <h1 className="onyx-inline-title">{titleValue}</h1>
-          ))}
         {isEditing ? (
-          <CodeMirror
-            ref={editorRef}
-            value={content}
-            onChange={handleChange}
-            extensions={extensions}
-            theme="none"
-            basicSetup={{
-              lineNumbers: false,
-              foldGutter: false,
-              highlightActiveLine: false,
-              highlightSelectionMatches: true,
-              syntaxHighlighting: false,
+          <input
+            value={titleValue}
+            onChange={(e) => setTitleValue(e.target.value)}
+            onBlur={commitRename}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                commitRename();
+                editorRef.current?.view?.focus();
+              }
+              if (e.key === "Escape") {
+                setTitleValue(fileStem);
+              }
+              if (e.key === "ArrowDown") {
+                e.preventDefault();
+                const view = editorRef.current?.view;
+                if (view) {
+                  view.dispatch({
+                    selection: EditorSelection.cursor(0),
+                    scrollIntoView: true,
+                  });
+                  view.focus();
+                }
+              }
             }}
-            style={{ fontSize: "16px" }}
+            className="onyx-inline-title"
+            spellCheck={false}
+            aria-label="File name"
           />
         ) : (
-          <div
-            className="onyx-reading-view"
-            dangerouslySetInnerHTML={{ __html: renderedHtml }}
-          />
+          <h1 className="onyx-inline-title">{titleValue}</h1>
         )}
       </div>
+    </div>
+  );
+
+  return (
+    <div className="flex flex-col h-full bg-background">
+      {headerContent}
+      {isEditing ? (
+        <CodeMirror
+          ref={editorRef}
+          value={content}
+          onChange={handleChange}
+          extensions={extensions}
+          theme="none"
+          height="100%"
+          className="flex-1 min-h-0"
+          basicSetup={{
+            lineNumbers: false,
+            foldGutter: false,
+            highlightActiveLine: false,
+            highlightSelectionMatches: true,
+            syntaxHighlighting: false,
+          }}
+          style={{ fontSize: "16px" }}
+        />
+      ) : (
+        <div className="flex justify-center overflow-y-auto flex-1">
+          <div className="w-full max-w-[806px] px-8 py-6">
+            <div
+              className="onyx-reading-view"
+              dangerouslySetInnerHTML={{ __html: renderedHtml }}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

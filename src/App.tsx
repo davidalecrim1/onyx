@@ -102,6 +102,7 @@ export default function App() {
   if (view.kind === "editor") {
     return (
       <EditorPage
+        key={view.vaultPath}
         vaultPath={view.vaultPath}
         vaultName={view.vaultName}
         knownVaults={knownVaults}
