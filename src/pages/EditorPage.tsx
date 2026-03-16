@@ -5,9 +5,11 @@ import TabBar, { type Tab } from "../components/TabBar";
 import MarkdownEditor from "../components/MarkdownEditor";
 import VaultSwitcher from "../components/VaultSwitcher";
 import AppLayout from "../components/AppLayout";
+import CommandPalette from "../components/CommandPalette";
 import { useKeybindings } from "../hooks/useKeybindings";
 import { useCommandStore } from "../stores/commandStore";
 import { usePanelStore } from "../stores/panelStore";
+import { useCommandPaletteStore } from "../stores/commandPaletteStore";
 
 interface VaultEntry {
   name: string;
@@ -408,7 +410,35 @@ export default function EditorPage({
     return () => unregister("view.toggleSidebar");
   }, [register, unregister]);
 
+  useEffect(() => {
+    register({
+      id: "view.palette",
+      label: "Open Command Palette",
+      execute: () => useCommandPaletteStore.getState().open(),
+    });
+    register({
+      id: "file.newNote",
+      label: "New Note",
+      keywords: ["create", "file", "note", "document"],
+      execute: handleNewNoteOpen,
+    });
+    register({
+      id: "file.newFolder",
+      label: "New Folder",
+      keywords: ["create", "directory", "folder"],
+      execute: handleNewFolderOpen,
+    });
+    return () => {
+      unregister("view.palette");
+      unregister("file.newNote");
+      unregister("file.newFolder");
+    };
+  }, [register, unregister, handleNewNoteOpen, handleNewFolderOpen]);
+
   useKeybindings();
+
+  const paletteOpen = useCommandPaletteStore((s) => s.isOpen);
+  const closePalette = useCommandPaletteStore((s) => s.close);
 
   const activeContent =
     state.activeTabPath !== null
@@ -538,25 +568,28 @@ export default function EditorPage({
   );
 
   return (
-    <AppLayout sidebar={sidebar} tabBar={tabBar}>
-      <div className="flex-1 overflow-hidden">
-        {activeContent !== null ? (
-          <MarkdownEditor
-            content={activeContent}
-            onChange={handleContentChange}
-            vimMode={vimMode}
-            filePath={state.activeTabPath}
-            onRename={handleRename}
-            vaultPath={vaultPath}
-            onWikilinkOpen={handleFileClick}
-            onWikilinkCreate={handleWikilinkCreate}
-          />
-        ) : (
-          <div className="flex h-full items-center justify-center text-text-secondary">
-            <p className="text-sm">Open a file from the sidebar</p>
-          </div>
-        )}
-      </div>
-    </AppLayout>
+    <>
+      <AppLayout sidebar={sidebar} tabBar={tabBar}>
+        <div className="flex-1 overflow-hidden">
+          {activeContent !== null ? (
+            <MarkdownEditor
+              content={activeContent}
+              onChange={handleContentChange}
+              vimMode={vimMode}
+              filePath={state.activeTabPath}
+              onRename={handleRename}
+              vaultPath={vaultPath}
+              onWikilinkOpen={handleFileClick}
+              onWikilinkCreate={handleWikilinkCreate}
+            />
+          ) : (
+            <div className="flex h-full items-center justify-center text-text-secondary">
+              <p className="text-sm">Open a file from the sidebar</p>
+            </div>
+          )}
+        </div>
+      </AppLayout>
+      {paletteOpen && <CommandPalette onClose={closePalette} />}
+    </>
   );
 }

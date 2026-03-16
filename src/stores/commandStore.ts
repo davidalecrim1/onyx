@@ -3,6 +3,7 @@ import { create } from "zustand";
 interface CommandEntry {
   id: string;
   label: string;
+  keywords?: string[];
   execute: () => void;
 }
 
