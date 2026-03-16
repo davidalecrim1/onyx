@@ -15,7 +15,10 @@ export const parentScrollIntoView = ViewPlugin.fromClass(
       // coordsAtPos returns null for off-screen positions, so we compute
       // the cursor's offset from the top of the editor DOM element instead.
       const head = view.state.selection.main.head;
-      const editorTop = view.dom.getBoundingClientRect().top + scroller.scrollTop - scroller.getBoundingClientRect().top;
+      const editorTop =
+        view.dom.getBoundingClientRect().top +
+        scroller.scrollTop -
+        scroller.getBoundingClientRect().top;
       const lineInfo = view.lineBlockAt(head);
       const cursorTop = editorTop + lineInfo.top;
       const cursorBottom = editorTop + lineInfo.bottom;

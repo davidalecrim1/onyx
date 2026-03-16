@@ -33,7 +33,10 @@ function parseBinding(raw: string): Omit<ParsedBinding, "command"> {
   };
 }
 
-function matchesBinding(event: KeyboardEvent, binding: Omit<ParsedBinding, "command">): boolean {
+function matchesBinding(
+  event: KeyboardEvent,
+  binding: Omit<ParsedBinding, "command">,
+): boolean {
   if (event.key.toLowerCase() !== binding.key) return false;
   if (binding.cmd !== event.metaKey) return false;
   if (binding.ctrl !== event.ctrlKey) return false;
