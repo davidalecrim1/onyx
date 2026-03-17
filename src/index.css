@@ -117,11 +117,25 @@ body,
   font-size: 0.9em;
 }
 
-.onyx-hr {
-  border: none;
+.cm-line.onyx-hr-line {
+  position: relative;
+  color: transparent;
+}
+
+.cm-line.onyx-hr-line::after {
+  content: "";
+  display: block;
   border-top: 1px solid #454a56;
-  margin: 0.5em 0;
-  width: 100%;
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  pointer-events: none;
+}
+
+.onyx-hr-hide {
+  font-size: 0;
+  user-select: none;
 }
 
 .onyx-bullet {

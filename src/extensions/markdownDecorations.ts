@@ -7,18 +7,6 @@ import {
   WidgetType,
 } from "@codemirror/view";
 
-class HorizontalRuleWidget extends WidgetType {
-  toDOM(): HTMLElement {
-    const hr = document.createElement("hr");
-    hr.className = "onyx-hr";
-    return hr;
-  }
-
-  eq(): boolean {
-    return true;
-  }
-}
-
 class BulletWidget extends WidgetType {
   toDOM(): HTMLElement {
     const span = document.createElement("span");
@@ -446,14 +434,16 @@ function buildDecorations(state: EditorState): DecorationSet {
         }
 
         case "HorizontalRule": {
+          push(
+            node.from,
+            node.from,
+            Decoration.line({ class: "onyx-hr-line" }),
+          );
           if (!cursorIsHere) {
             push(
               node.from,
               node.to,
-              Decoration.replace({
-                widget: new HorizontalRuleWidget(),
-                block: true,
-              }),
+              Decoration.mark({ class: "onyx-hr-hide" }),
             );
           }
           break;
