@@ -6,10 +6,12 @@ import MarkdownEditor from "../components/MarkdownEditor";
 import VaultSwitcher from "../components/VaultSwitcher";
 import AppLayout from "../components/AppLayout";
 import CommandPalette from "../components/CommandPalette";
+import FilePicker from "../components/FilePicker";
 import { useKeybindings } from "../hooks/useKeybindings";
 import { useCommandStore } from "../stores/commandStore";
 import { usePanelStore } from "../stores/panelStore";
 import { useCommandPaletteStore } from "../stores/commandPaletteStore";
+import { useFilePickerStore } from "../stores/filePickerStore";
 
 interface VaultEntry {
   name: string;
@@ -417,6 +419,12 @@ export default function EditorPage({
       execute: () => useCommandPaletteStore.getState().open(),
     });
     register({
+      id: "file.open",
+      label: "Open File",
+      keywords: ["file", "open", "find", "search"],
+      execute: () => useFilePickerStore.getState().open(),
+    });
+    register({
       id: "file.newNote",
       label: "New Note",
       keywords: ["create", "file", "note", "document"],
@@ -430,6 +438,7 @@ export default function EditorPage({
     });
     return () => {
       unregister("view.palette");
+      unregister("file.open");
       unregister("file.newNote");
       unregister("file.newFolder");
     };
@@ -439,6 +448,8 @@ export default function EditorPage({
 
   const paletteOpen = useCommandPaletteStore((s) => s.isOpen);
   const closePalette = useCommandPaletteStore((s) => s.close);
+  const filePickerOpen = useFilePickerStore((s) => s.isOpen);
+  const closeFilePicker = useFilePickerStore((s) => s.close);
 
   const activeContent =
     state.activeTabPath !== null
@@ -590,6 +601,14 @@ export default function EditorPage({
         </div>
       </AppLayout>
       {paletteOpen && <CommandPalette onClose={closePalette} />}
+      {filePickerOpen && (
+        <FilePicker
+          files={fileTree}
+          onOpen={handleFileClick}
+          onCreate={handleNewNoteConfirm}
+          onClose={closeFilePicker}
+        />
+      )}
     </>
   );
 }
