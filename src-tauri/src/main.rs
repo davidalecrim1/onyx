@@ -13,7 +13,7 @@ use std::path::PathBuf;
 use std::sync::Mutex;
 
 use commands::{
-    build_tag_index, create_file, create_folder, create_vault, get_default_vault_dir,
+    build_tag_index, create_file, create_folder, create_vault, delete_file, get_default_vault_dir,
     get_file_tree, get_known_vaults, get_last_active_vault, get_settings, get_tags,
     load_vault_session_cmd, maximize_window, move_file, open_vault, open_vault_window,
     open_welcome_window, read_file, rename_file, resolve_asset_path, resolve_wikilink,
@@ -27,7 +27,7 @@ fn main() {
     tauri::Builder::default()
         .plugin(
             tauri_plugin_prevent_default::Builder::new()
-                .with_flags(Flags::RELOAD)
+                .with_flags(Flags::RELOAD | Flags::CONTEXT_MENU)
                 .build(),
         )
         .plugin(
@@ -67,6 +67,7 @@ fn main() {
             resolve_asset_path,
             open_vault_window,
             open_welcome_window,
+            delete_file,
         ])
         .run(tauri::generate_context!())
         .expect("error running tauri app");

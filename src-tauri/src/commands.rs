@@ -209,6 +209,17 @@ pub fn rename_file(old_path: String, new_stem: String) -> Result<String, String>
     Ok(destination.to_string_lossy().to_string())
 }
 
+/// Permanently deletes a file or directory at the given path.
+#[tauri::command]
+pub fn delete_file(path: String) -> Result<(), String> {
+    let target = std::path::Path::new(&path);
+    if target.is_dir() {
+        std::fs::remove_dir_all(target).map_err(|e| e.to_string())
+    } else {
+        std::fs::remove_file(target).map_err(|e| e.to_string())
+    }
+}
+
 /// Moves a file or directory to a new parent directory, preserving the original name.
 #[tauri::command]
 pub fn move_file(source_path: String, target_dir: String) -> Result<(), String> {

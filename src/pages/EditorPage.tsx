@@ -327,6 +327,19 @@ export default function EditorPage({
     [fetchFileTree],
   );
 
+  const handleFileDelete = useCallback(
+    async (path: string) => {
+      try {
+        await invoke("delete_file", { path });
+        dispatch({ type: "close_tab", path });
+        fetchFileTree();
+      } catch (err) {
+        console.error("Failed to delete file:", err);
+      }
+    },
+    [fetchFileTree],
+  );
+
   const handleContentChange = useCallback(
     (content: string) => {
       if (!state.activeTabPath) return;
@@ -555,6 +568,7 @@ export default function EditorPage({
             onFileClick={handleFileClick}
             onFolderClick={handleFolderClick}
             onFileDrop={handleFileDrop}
+            onDelete={handleFileDelete}
           />
         )}
       </div>

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 export interface FileTreeEntry {
   name: string;
@@ -8,6 +8,12 @@ export interface FileTreeEntry {
   children: FileTreeEntry[];
 }
 
+interface ContextMenuState {
+  x: number;
+  y: number;
+  entry: FileTreeEntry;
+}
+
 interface Props {
   entries: FileTreeEntry[];
   activeFilePath: string | null;
@@ -15,6 +21,7 @@ interface Props {
   onFileClick: (path: string) => void;
   onFolderClick?: (path: string) => void;
   onFileDrop?: (sourcePath: string, targetDirPath: string) => void;
+  onDelete?: (path: string, isDirectory: boolean) => void;
 }
 
 // Shared drag state lifted outside React so all nodes can read it without prop drilling.
@@ -54,22 +61,65 @@ export default function FileTree({
   onFileClick,
   onFolderClick,
   onFileDrop,
+  onDelete,
 }: Props) {
+  const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
+
+  useEffect(() => {
+    if (!contextMenu) return;
+
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") setContextMenu(null);
+    }
+
+    // Use a timeout so this listener doesn't catch the right-click that opened the menu.
+    const timer = setTimeout(() => {
+      document.addEventListener("click", () => setContextMenu(null), {
+        once: true,
+      });
+    }, 0);
+
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      clearTimeout(timer);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [contextMenu]);
+
   return (
-    // data-drop-path on the container catches drops onto empty space below all entries,
-    // which moves the file to the vault root.
-    <div className="select-none text-sm" data-drop-path={vaultPath}>
-      {entries.map((entry) => (
-        <FileTreeNode
-          key={entry.path}
-          entry={entry}
-          activeFilePath={activeFilePath}
-          onFileClick={onFileClick}
-          onFolderClick={onFolderClick}
-          onFileDrop={onFileDrop}
-        />
-      ))}
-    </div>
+    <>
+      {/* data-drop-path on the container catches drops onto empty space below all entries,
+          which moves the file to the vault root. */}
+      <div className="select-none text-sm" data-drop-path={vaultPath}>
+        {entries.map((entry) => (
+          <FileTreeNode
+            key={entry.path}
+            entry={entry}
+            activeFilePath={activeFilePath}
+            onFileClick={onFileClick}
+            onFolderClick={onFolderClick}
+            onFileDrop={onFileDrop}
+            onContextMenu={(x, y, entry) => setContextMenu({ x, y, entry })}
+          />
+        ))}
+      </div>
+      {contextMenu && (
+        <div
+          className="fixed z-50 min-w-[140px] rounded border border-surface bg-surface-hover py-1 shadow-lg"
+          style={{ left: contextMenu.x, top: contextMenu.y }}
+        >
+          <button
+            className="flex w-full px-3 py-1.5 text-sm text-red-400 hover:bg-surface-active"
+            onClick={() => {
+              onDelete?.(contextMenu.entry.path, contextMenu.entry.is_directory);
+              setContextMenu(null);
+            }}
+          >
+            Delete
+          </button>
+        </div>
+      )}
+    </>
   );
 }
 
@@ -79,6 +129,7 @@ interface NodeProps {
   onFileClick: (path: string) => void;
   onFolderClick?: (path: string) => void;
   onFileDrop?: (sourcePath: string, targetDirPath: string) => void;
+  onContextMenu: (x: number, y: number, entry: FileTreeEntry) => void;
 }
 
 function FileTreeNode({
@@ -87,6 +138,7 @@ function FileTreeNode({
   onFileClick,
   onFolderClick,
   onFileDrop,
+  onContextMenu,
 }: NodeProps) {
   const [collapsed, setCollapsed] = useState(false);
   const [isDragTarget, setIsDragTarget] = useState(false);
@@ -107,6 +159,10 @@ function FileTreeNode({
               setCollapsed((prev) => !prev);
               onFolderClick?.(entry.path);
             }
+          }}
+          onContextMenu={(e) => {
+            e.preventDefault();
+            onContextMenu(e.clientX, e.clientY, entry);
           }}
           onPointerEnter={() => {
             if (activeDrag) setIsDragTarget(true);
@@ -134,6 +190,7 @@ function FileTreeNode({
                 onFileClick={onFileClick}
                 onFolderClick={onFolderClick}
                 onFileDrop={onFileDrop}
+                onContextMenu={onContextMenu}
               />
             ))}
           </div>
@@ -205,6 +262,10 @@ function FileTreeNode({
     <button
       onPointerDown={handlePointerDown}
       onClick={() => onFileClick(entry.path)}
+      onContextMenu={(e) => {
+        e.preventDefault();
+        onContextMenu(e.clientX, e.clientY, entry);
+      }}
       className={`flex w-full items-center rounded px-2 py-1 text-left transition-colors ${
         isActive
           ? "bg-surface-active text-text-primary"
