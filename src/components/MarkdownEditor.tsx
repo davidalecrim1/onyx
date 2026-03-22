@@ -354,7 +354,7 @@ export default function MarkdownEditor({
             highlightSelectionMatches: true,
             syntaxHighlighting: false,
           }}
-          style={{ fontSize: "16px" }}
+          style={{ fontSize: "14px" }}
         />
       ) : (
         <div className="flex justify-center overflow-y-auto flex-1">
