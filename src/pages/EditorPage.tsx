@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useReducer, useState } from "react";
+import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import FileTree, { type FileTreeEntry } from "../components/FileTree";
 import TabBar, { type Tab } from "../components/TabBar";
@@ -12,6 +12,48 @@ import { useCommandStore } from "../stores/commandStore";
 import { usePanelStore } from "../stores/panelStore";
 import { useCommandPaletteStore } from "../stores/commandPaletteStore";
 import { useFilePickerStore } from "../stores/filePickerStore";
+
+type FileSortOrder =
+  | "name-asc"
+  | "name-desc"
+  | "modified-desc"
+  | "modified-asc"
+  | "created-desc"
+  | "created-asc";
+
+function sortFileTree(
+  entries: FileTreeEntry[],
+  order: FileSortOrder,
+): FileTreeEntry[] {
+  return entries
+    .map((entry) => {
+      if (!entry.is_directory) return entry;
+      return { ...entry, children: sortFileTree(entry.children, order) };
+    })
+    .sort((a, b) => {
+      // Directories always sort before files.
+      if (a.is_directory !== b.is_directory) {
+        return a.is_directory ? -1 : 1;
+      }
+      // Within directories, preserve existing order.
+      if (a.is_directory) return 0;
+
+      switch (order) {
+        case "name-asc":
+          return a.name.toLowerCase().localeCompare(b.name.toLowerCase());
+        case "name-desc":
+          return b.name.toLowerCase().localeCompare(a.name.toLowerCase());
+        case "modified-desc":
+          return b.modified_secs - a.modified_secs;
+        case "modified-asc":
+          return a.modified_secs - b.modified_secs;
+        case "created-desc":
+          return b.created_secs - a.created_secs;
+        case "created-asc":
+          return a.created_secs - b.created_secs;
+      }
+    });
+}
 
 interface VaultEntry {
   name: string;
@@ -143,6 +185,9 @@ export default function EditorPage({
   const [selectedFolderPath, setSelectedFolderPath] = useState<string | null>(
     null,
   );
+  const [fileSortOrder, setFileSortOrder] = useState<FileSortOrder>("name-asc");
+  const [sortMenuOpen, setSortMenuOpen] = useState(false);
+  const sortButtonRef = useRef<HTMLButtonElement>(null);
   const [state, dispatch] = useReducer(editorReducer, {
     tabs: [],
     activeTabPath: null,
@@ -478,7 +523,29 @@ export default function EditorPage({
         >
           {vaultName}
         </span>
-        <div className="ml-2 flex shrink-0 items-center gap-1">
+        <div className="relative ml-2 flex shrink-0 items-center gap-1">
+          <button
+            ref={sortButtonRef}
+            onClick={() => setSortMenuOpen((prev) => !prev)}
+            className="rounded px-1 text-text-secondary transition-colors hover:text-text-primary"
+            aria-label="Sort files"
+          >
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 14 14"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+              aria-hidden="true"
+            >
+              <path
+                d="M2 3.5h10M2 7h7M2 10.5h4"
+                stroke="currentColor"
+                strokeWidth="1.2"
+                strokeLinecap="round"
+              />
+            </svg>
+          </button>
           <button
             onClick={handleNewNoteOpen}
             className="rounded px-1 text-text-secondary transition-colors hover:text-text-primary"
@@ -514,6 +581,16 @@ export default function EditorPage({
           >
             ×
           </button>
+          {sortMenuOpen && (
+            <SortMenu
+              current={fileSortOrder}
+              onSelect={(order) => {
+                setFileSortOrder(order);
+                setSortMenuOpen(false);
+              }}
+              onClose={() => setSortMenuOpen(false)}
+            />
+          )}
         </div>
       </div>
       <div className="flex-1 overflow-y-auto py-1">
@@ -562,7 +639,7 @@ export default function EditorPage({
           </div>
         ) : (
           <FileTree
-            entries={fileTree}
+            entries={sortFileTree(fileTree, fileSortOrder)}
             activeFilePath={state.activeTabPath}
             vaultPath={vaultPath}
             onFileClick={handleFileClick}
@@ -624,5 +701,60 @@ export default function EditorPage({
         />
       )}
     </>
+  );
+}
+
+interface SortMenuProps {
+  current: FileSortOrder;
+  onSelect: (order: FileSortOrder) => void;
+  onClose: () => void;
+}
+
+const SORT_OPTIONS: { order: FileSortOrder; label: string }[] = [
+  { order: "name-asc", label: "File name (A to Z)" },
+  { order: "name-desc", label: "File name (Z to A)" },
+  { order: "modified-desc", label: "Modified time (new to old)" },
+  { order: "modified-asc", label: "Modified time (old to new)" },
+  { order: "created-desc", label: "Created time (new to old)" },
+  { order: "created-asc", label: "Created time (old to new)" },
+];
+
+function SortMenu({ current, onSelect, onClose }: SortMenuProps) {
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose();
+    }
+
+    const timer = setTimeout(() => {
+      document.addEventListener("click", onClose, { once: true });
+    }, 0);
+
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      clearTimeout(timer);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [onClose]);
+
+  return (
+    <div
+      ref={menuRef}
+      className="absolute right-0 top-full z-50 mt-1 min-w-[240px] rounded border border-surface bg-surface-hover py-1 shadow-lg"
+    >
+      {SORT_OPTIONS.map(({ order, label }) => (
+        <button
+          key={order}
+          className="flex w-full items-center gap-2 whitespace-nowrap px-3 py-1.5 text-left text-sm text-text-secondary hover:bg-surface-active hover:text-text-primary"
+          onClick={() => onSelect(order)}
+        >
+          <span className="w-3 shrink-0 text-accent">
+            {current === order ? "✓" : ""}
+          </span>
+          {label}
+        </button>
+      ))}
+    </div>
   );
 }

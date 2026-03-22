@@ -6,6 +6,8 @@ export interface FileTreeEntry {
   is_directory: boolean;
   depth: number;
   children: FileTreeEntry[];
+  modified_secs: number;
+  created_secs: number;
 }
 
 interface ContextMenuState {
@@ -111,7 +113,10 @@ export default function FileTree({
           <button
             className="flex w-full px-3 py-1.5 text-sm text-red-400 hover:bg-surface-active"
             onClick={() => {
-              onDelete?.(contextMenu.entry.path, contextMenu.entry.is_directory);
+              onDelete?.(
+                contextMenu.entry.path,
+                contextMenu.entry.is_directory,
+              );
               setContextMenu(null);
             }}
           >

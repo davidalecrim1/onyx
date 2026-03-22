@@ -29,6 +29,8 @@ pub struct FileTreeEntryDto {
     pub is_directory: bool,
     pub depth: usize,
     pub children: Vec<FileTreeEntryDto>,
+    pub modified_secs: u64,
+    pub created_secs: u64,
 }
 
 /// Serializable vault entry from the global config.
@@ -45,6 +47,8 @@ fn entry_to_dto(entry: &FileTreeEntry) -> FileTreeEntryDto {
         is_directory: entry.is_directory,
         depth: entry.depth,
         children: entry.children.iter().map(entry_to_dto).collect(),
+        modified_secs: entry.modified_secs,
+        created_secs: entry.created_secs,
     }
 }
 

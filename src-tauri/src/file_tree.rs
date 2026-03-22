@@ -1,5 +1,6 @@
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
+use std::time::UNIX_EPOCH;
 
 use crate::error::OnyxError;
 
@@ -12,6 +13,8 @@ pub struct FileTreeEntry {
     pub is_directory: bool,
     pub depth: usize,
     pub children: Vec<FileTreeEntry>,
+    pub modified_secs: u64,
+    pub created_secs: u64,
 }
 
 const ACCEPTED_EXTENSIONS: &[&str] = &[
@@ -59,14 +62,31 @@ fn scan_recursive(directory: &Path, depth: usize) -> Result<Vec<FileTreeEntry>, 
                 is_directory: true,
                 depth,
                 children,
+                modified_secs: 0,
+                created_secs: 0,
             });
         } else if is_accepted_file(&name) {
+            let meta = std::fs::metadata(&path).ok();
+            let modified_secs = meta
+                .as_ref()
+                .and_then(|m| m.modified().ok())
+                .and_then(|t| t.duration_since(UNIX_EPOCH).ok())
+                .map(|d| d.as_secs())
+                .unwrap_or(0);
+            let created_secs = meta
+                .as_ref()
+                .and_then(|m| m.created().ok())
+                .and_then(|t| t.duration_since(UNIX_EPOCH).ok())
+                .map(|d| d.as_secs())
+                .unwrap_or(0);
             entries.push(FileTreeEntry {
                 name,
                 path,
                 is_directory: false,
                 depth,
                 children: Vec::new(),
+                modified_secs,
+                created_secs,
             });
         }
     }
