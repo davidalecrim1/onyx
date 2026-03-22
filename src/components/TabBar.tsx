@@ -36,7 +36,7 @@ export default function TabBar({
                 : "bg-[#1e2128] text-text-secondary hover:bg-surface-hover hover:text-text-primary"
             }`}
           >
-            <span className="truncate">{tab.name}</span>
+            <span className="truncate">{tab.name.replace(/\.md$/i, "")}</span>
             <div className="relative flex h-4 w-4 shrink-0 items-center justify-center">
               <button
                 onClick={(e) => {

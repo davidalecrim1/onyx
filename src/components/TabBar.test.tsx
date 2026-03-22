@@ -4,10 +4,13 @@ import { render, screen, fireEvent } from "@testing-library/react";
 import TabBar from "./TabBar";
 
 const TABS = [
-  { path: "/a.md", name: "Alpha" },
-  { path: "/b.md", name: "Beta" },
-  { path: "/c.md", name: "Gamma" },
+  { path: "/a.md", name: "Alpha.md" },
+  { path: "/b.md", name: "Beta.md" },
+  { path: "/c.md", name: "Gamma.md" },
 ];
+
+// Displayed labels after .md stripping
+const LABELS = ["Alpha", "Beta", "Gamma"];
 
 function renderTabBar(overrides: Partial<Parameters<typeof TabBar>[0]> = {}) {
   const props = {
@@ -36,55 +39,64 @@ describe("TabBar layout — overflow shrink guard", () => {
 
   it("each tab has grow so it expands to fill the container", () => {
     renderTabBar();
-    // All tab text spans are inside tab divs — check the parent divs
-    TABS.forEach((tab) => {
-      const label = screen.getByText(tab.name);
-      const tabEl = label.parentElement as HTMLElement;
+    LABELS.forEach((label) => {
+      const el = screen.getByText(label);
+      const tabEl = el.parentElement as HTMLElement;
       expect(tabEl.className).toContain("grow");
     });
   });
 
   it("each tab has shrink so it compresses when container is too narrow", () => {
     renderTabBar();
-    TABS.forEach((tab) => {
-      const label = screen.getByText(tab.name);
-      const tabEl = label.parentElement as HTMLElement;
+    LABELS.forEach((label) => {
+      const el = screen.getByText(label);
+      const tabEl = el.parentElement as HTMLElement;
       expect(tabEl.className).toContain("shrink");
     });
   });
 
   it("each tab has max-w-[180px] to cap width when few tabs are open", () => {
     renderTabBar();
-    TABS.forEach((tab) => {
-      const label = screen.getByText(tab.name);
-      const tabEl = label.parentElement as HTMLElement;
+    LABELS.forEach((label) => {
+      const el = screen.getByText(label);
+      const tabEl = el.parentElement as HTMLElement;
       expect(tabEl.className).toContain("max-w-[180px]");
     });
   });
 
   it("each tab has min-w-[36px] floor so tabs never collapse to zero", () => {
     renderTabBar();
-    TABS.forEach((tab) => {
-      const label = screen.getByText(tab.name);
-      const tabEl = label.parentElement as HTMLElement;
+    LABELS.forEach((label) => {
+      const el = screen.getByText(label);
+      const tabEl = el.parentElement as HTMLElement;
       expect(tabEl.className).toContain("min-w-[36px]");
     });
   });
 
   it("tab label has truncate so text clips instead of overflowing", () => {
     renderTabBar();
-    TABS.forEach((tab) => {
-      const label = screen.getByText(tab.name);
-      expect(label.className).toContain("truncate");
+    LABELS.forEach((label) => {
+      const el = screen.getByText(label);
+      expect(el.className).toContain("truncate");
     });
   });
 });
 
 describe("TabBar behavior", () => {
+  it("strips .md extension from tab names", () => {
+    renderTabBar();
+    LABELS.forEach((label) => {
+      expect(screen.getByText(label)).toBeInTheDocument();
+    });
+    TABS.forEach((tab) => {
+      expect(screen.queryByText(tab.name)).not.toBeInTheDocument();
+    });
+  });
+
   it("renders all tabs", () => {
     renderTabBar();
-    TABS.forEach((tab) => {
-      expect(screen.getByText(tab.name)).toBeInTheDocument();
+    LABELS.forEach((label) => {
+      expect(screen.getByText(label)).toBeInTheDocument();
     });
   });
 
@@ -96,7 +108,7 @@ describe("TabBar behavior", () => {
 
   it("clicking the close button calls onTabClose and does not trigger onTabClick", () => {
     const { props } = renderTabBar();
-    const closeBtn = screen.getByRole("button", { name: "Close Beta" });
+    const closeBtn = screen.getByRole("button", { name: "Close Beta.md" });
     fireEvent.click(closeBtn);
     expect(props.onTabClose).toHaveBeenCalledWith("/b.md");
     expect(props.onTabClick).not.toHaveBeenCalled();
@@ -120,7 +132,7 @@ describe("TabBar behavior", () => {
   it("dirty indicator is shown for dirty paths", () => {
     renderTabBar({ dirtyPaths: new Set(["/b.md"]) });
     const closeWrapper = screen
-      .getByRole("button", { name: "Close Beta" })
+      .getByRole("button", { name: "Close Beta.md" })
       .parentElement!;
     const dot = closeWrapper.querySelector("span");
     expect(dot).toBeInTheDocument();
@@ -129,7 +141,7 @@ describe("TabBar behavior", () => {
   it("dirty indicator is absent for clean paths", () => {
     renderTabBar({ dirtyPaths: new Set() });
     const closeWrapper = screen
-      .getByRole("button", { name: "Close Alpha" })
+      .getByRole("button", { name: "Close Alpha.md" })
       .parentElement!;
     const dot = closeWrapper.querySelector("span");
     expect(dot).not.toBeInTheDocument();
@@ -138,5 +150,13 @@ describe("TabBar behavior", () => {
   it("renders no tabs when tabs array is empty", () => {
     renderTabBar({ tabs: [], activeTabPath: null });
     expect(screen.queryByRole("button")).not.toBeInTheDocument();
+  });
+
+  it("preserves names without .md extension unchanged", () => {
+    renderTabBar({
+      tabs: [{ path: "/notes", name: "My Notes" }],
+      activeTabPath: "/notes",
+    });
+    expect(screen.getByText("My Notes")).toBeInTheDocument();
   });
 });

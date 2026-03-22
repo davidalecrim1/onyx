@@ -278,7 +278,7 @@ function FileTreeNode({
       }`}
       style={{ paddingLeft: `${20 + indent}px` }}
     >
-      <span className="truncate">{entry.name}</span>
+      <span className="truncate">{entry.name.replace(/\.md$/i, "")}</span>
     </button>
   );
 }

@@ -261,7 +261,7 @@ export default function EditorPage({
   }, [vaultPath, sessionLoaded, state.tabs, state.activeTabPath]);
 
   const handleNewNoteOpen = useCallback(() => {
-    setNewNoteName("Untitled.md");
+    setNewNoteName("Untitled");
   }, []);
 
   const handleNewFolderOpen = useCallback(() => {

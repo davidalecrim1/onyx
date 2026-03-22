@@ -140,7 +140,7 @@ export default function FilePicker({
                       : "text-text-secondary"
                   }`}
                 >
-                  <span className="truncate">{file.name}</span>
+                  <span className="truncate">{file.name.replace(/\.md$/i, "")}</span>
                   {file.dir && (
                     <span className="ml-4 shrink-0 max-w-[40%] truncate text-xs text-text-secondary opacity-70 text-right">
                       {file.dir.split("/").pop()}
