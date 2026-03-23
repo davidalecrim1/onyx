@@ -434,12 +434,12 @@ function buildDecorations(state: EditorState): DecorationSet {
         }
 
         case "HorizontalRule": {
-          push(
-            node.from,
-            node.from,
-            Decoration.line({ class: "onyx-hr-line" }),
-          );
           if (!cursorIsHere) {
+            push(
+              node.from,
+              node.from,
+              Decoration.line({ class: "onyx-hr-line" }),
+            );
             push(
               node.from,
               node.to,
