@@ -122,4 +122,26 @@ mod tests {
 
         assert_eq!(session, loaded);
     }
+
+    #[test]
+    fn vault_session_missing_sort_order_defaults_to_none() {
+        let temp = TempDir::new().unwrap();
+        let vault_path = temp.path().join("vault");
+        let onyx_dir = vault_path.join(".onyx");
+        std::fs::create_dir_all(&onyx_dir).unwrap();
+
+        // Write a legacy session file that predates the sort_order field.
+        std::fs::write(
+            onyx_dir.join("session.toml"),
+            r#"open_tabs = ["/vault/a.md"]
+active_tab = "/vault/a.md"
+"#,
+        )
+        .unwrap();
+
+        let loaded = load_vault_session(&vault_path).unwrap();
+
+        assert_eq!(loaded.sort_order, None);
+        assert_eq!(loaded.active_tab, Some("/vault/a.md".to_string()));
+    }
 }
