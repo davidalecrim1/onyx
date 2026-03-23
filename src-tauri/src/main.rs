@@ -16,8 +16,8 @@ use commands::{
     build_tag_index, create_file, create_folder, create_vault, delete_file, get_default_vault_dir,
     get_file_tree, get_known_vaults, get_last_active_vault, get_settings, get_tags,
     load_vault_session_cmd, maximize_window, move_file, open_vault, open_vault_window,
-    open_welcome_window, read_file, rename_file, resolve_asset_path, resolve_wikilink,
-    save_settings, save_vault_session_cmd, update_file_tags, write_file,
+    open_welcome_window, read_binary_as_data_url, read_file, rename_file, resolve_asset_path,
+    resolve_wikilink, save_settings, save_vault_session_cmd, update_file_tags, write_file,
 };
 use tag_index::TagIndex;
 use tauri_plugin_log::{Target, TargetKind};
@@ -65,6 +65,7 @@ fn main() {
             update_file_tags,
             resolve_wikilink,
             resolve_asset_path,
+            read_binary_as_data_url,
             open_vault_window,
             open_welcome_window,
             delete_file,

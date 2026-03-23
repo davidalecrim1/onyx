@@ -4,6 +4,8 @@ use std::hash::{Hash, Hasher};
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 
+use base64::{engine::general_purpose, Engine as _};
+
 use log::{error, info, warn};
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Manager, State, TitleBarStyle, WebviewUrl, WebviewWindowBuilder};
@@ -98,6 +100,33 @@ pub fn read_file(path: String) -> Result<String, String> {
     })
 }
 
+/// Reads a binary file and returns it as a base64-encoded data URL for display in the WebView.
+/// The MIME type is inferred from the file extension.
+#[tauri::command]
+pub fn read_binary_as_data_url(path: String) -> Result<String, String> {
+    let bytes = std::fs::read(&path).map_err(|e| {
+        error!("Failed to read file {}: {e}", path);
+        e.to_string()
+    })?;
+    let ext = Path::new(&path)
+        .extension()
+        .and_then(|e| e.to_str())
+        .unwrap_or("")
+        .to_lowercase();
+    let mime = match ext.as_str() {
+        "jpg" | "jpeg" => "image/jpeg",
+        "gif" => "image/gif",
+        "webp" => "image/webp",
+        "svg" => "image/svg+xml",
+        "bmp" => "image/bmp",
+        "avif" => "image/avif",
+        "pdf" => "application/pdf",
+        _ => "image/png",
+    };
+    let encoded = general_purpose::STANDARD.encode(&bytes);
+    Ok(format!("data:{mime};base64,{encoded}"))
+}
+
 /// Writes content to a file, creating it if it doesn't exist.
 #[tauri::command]
 pub fn write_file(path: String, content: String) -> Result<(), String> {
@@ -138,16 +167,18 @@ pub fn load_vault_session_cmd(vault_path: String) -> Result<VaultSession, String
     })
 }
 
-/// Persists the session (open tabs, active tab) for the given vault.
+/// Persists the session (open tabs, active tab, sort order) for the given vault.
 #[tauri::command]
 pub fn save_vault_session_cmd(
     vault_path: String,
     open_tabs: Vec<String>,
     active_tab: Option<String>,
+    sort_order: Option<String>,
 ) -> Result<(), String> {
     let session = VaultSession {
         open_tabs,
         active_tab,
+        sort_order,
     };
     save_vault_session(Path::new(&vault_path), &session).map_err(|e| {
         warn!("Failed to save vault session for {}: {e}", vault_path);

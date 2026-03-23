@@ -16,6 +16,8 @@ pub struct VaultSession {
     #[serde(default)]
     pub open_tabs: Vec<String>,
     pub active_tab: Option<String>,
+    /// The file sort order selected in the sidebar (e.g. "name-asc", "modified-desc").
+    pub sort_order: Option<String>,
 }
 
 /// Loads the session from `<vault>/.onyx/session.toml`, returning defaults if absent.
@@ -112,6 +114,7 @@ mod tests {
         let session = VaultSession {
             open_tabs: vec!["/vault/a.md".to_string(), "/vault/b.md".to_string()],
             active_tab: Some("/vault/b.md".to_string()),
+            sort_order: Some("modified-desc".to_string()),
         };
 
         save_vault_session(&vault_path, &session).unwrap();

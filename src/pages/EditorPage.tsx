@@ -3,6 +3,8 @@ import { invoke } from "@tauri-apps/api/core";
 import FileTree, { type FileTreeEntry } from "../components/FileTree";
 import TabBar, { type Tab } from "../components/TabBar";
 import MarkdownEditor from "../components/MarkdownEditor";
+import ImageViewer from "../components/ImageViewer";
+import PdfViewer from "../components/PdfViewer";
 import VaultSwitcher from "../components/VaultSwitcher";
 import AppLayout from "../components/AppLayout";
 import CommandPalette from "../components/CommandPalette";
@@ -12,6 +14,26 @@ import { useCommandStore } from "../stores/commandStore";
 import { usePanelStore } from "../stores/panelStore";
 import { useCommandPaletteStore } from "../stores/commandPaletteStore";
 import { useFilePickerStore } from "../stores/filePickerStore";
+
+const IMAGE_EXTENSIONS = new Set([
+  "avif",
+  "bmp",
+  "gif",
+  "jpeg",
+  "jpg",
+  "png",
+  "svg",
+  "webp",
+]);
+
+function isImagePath(path: string): boolean {
+  const ext = path.split(".").pop()?.toLowerCase() ?? "";
+  return IMAGE_EXTENSIONS.has(ext);
+}
+
+function isPdf(path: string): boolean {
+  return path.toLowerCase().endsWith(".pdf");
+}
 
 type FileSortOrder =
   | "name-asc"
@@ -63,6 +85,7 @@ interface VaultEntry {
 interface VaultSession {
   open_tabs: string[];
   active_tab: string | null;
+  sort_order: string | null;
 }
 
 interface Props {
@@ -232,11 +255,15 @@ export default function EditorPage({
     invoke<VaultSession>("load_vault_session_cmd", { vaultPath })
       .then(async (session) => {
         for (const tabPath of session.open_tabs) {
+          const name = tabPath.split("/").pop() ?? tabPath;
+          if (isImagePath(tabPath) || isPdf(tabPath)) {
+            dispatch({ type: "open_file", path: tabPath, name, content: "" });
+            continue;
+          }
           try {
             const content = await invoke<string>("read_file", {
               path: tabPath,
             });
-            const name = tabPath.split("/").pop() ?? tabPath;
             dispatch({ type: "open_file", path: tabPath, name, content });
           } catch {
             // File may have been deleted since last session — skip it.
@@ -245,20 +272,24 @@ export default function EditorPage({
         if (session.active_tab) {
           dispatch({ type: "activate_tab", path: session.active_tab });
         }
+        if (session.sort_order) {
+          setFileSortOrder(session.sort_order as FileSortOrder);
+        }
         setSessionLoaded(true);
       })
       .catch(() => setSessionLoaded(true));
   }, [vaultPath, fileTree, sessionLoaded]);
 
-  // Persist session whenever tabs or active tab changes (after initial load).
+  // Persist session whenever tabs, active tab, or sort order changes (after initial load).
   useEffect(() => {
     if (!sessionLoaded) return;
     invoke("save_vault_session_cmd", {
       vaultPath,
       openTabs: state.tabs.map((tab) => tab.path),
       activeTab: state.activeTabPath,
+      sortOrder: fileSortOrder,
     }).catch((err) => console.error("Failed to save session:", err));
-  }, [vaultPath, sessionLoaded, state.tabs, state.activeTabPath]);
+  }, [vaultPath, sessionLoaded, state.tabs, state.activeTabPath, fileSortOrder]);
 
   const handleNewNoteOpen = useCallback(() => {
     setNewNoteName("Untitled");
@@ -332,8 +363,12 @@ export default function EditorPage({
         return;
       }
       try {
-        const content = await invoke<string>("read_file", { path });
         const name = path.split("/").pop() ?? path;
+        if (isImagePath(path) || isPdf(path)) {
+          dispatch({ type: "open_file", path, name, content: "" });
+          return;
+        }
+        const content = await invoke<string>("read_file", { path });
         dispatch({ type: "open_file", path, name, content });
       } catch (err) {
         console.error("Failed to read file:", err);
@@ -428,6 +463,7 @@ export default function EditorPage({
       label: "Save File",
       execute: () => {
         if (!state.activeTabPath) return;
+        if (isPdf(state.activeTabPath)) return;
         const content = state.fileContents[state.activeTabPath];
         if (content === undefined) return;
         invoke("write_file", { path: state.activeTabPath, content })
@@ -674,6 +710,11 @@ export default function EditorPage({
       <AppLayout sidebar={sidebar} tabBar={tabBar}>
         <div className="flex-1 overflow-hidden">
           {activeContent !== null ? (
+            state.activeTabPath && isPdf(state.activeTabPath) ? (
+              <PdfViewer filePath={state.activeTabPath} />
+            ) : state.activeTabPath && isImagePath(state.activeTabPath) ? (
+              <ImageViewer filePath={state.activeTabPath} />
+            ) : (
             <MarkdownEditor
               content={activeContent}
               onChange={handleContentChange}
@@ -684,6 +725,7 @@ export default function EditorPage({
               onWikilinkOpen={handleFileClick}
               onWikilinkCreate={handleWikilinkCreate}
             />
+            )
           ) : (
             <div className="flex h-full items-center justify-center text-text-secondary">
               <p className="text-sm">Open a file from the sidebar</p>

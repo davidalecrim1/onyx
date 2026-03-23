@@ -16,6 +16,7 @@ tauri-plugin-log = "2"
 tauri-plugin-prevent-default = "4"
 walkdir = "2"
 urlencoding = "2"
+base64 = "0.22"
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
