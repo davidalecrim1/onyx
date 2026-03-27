@@ -26,15 +26,15 @@ import {
 const onyxTheme = EditorView.theme(
   {
     "&": {
-      backgroundColor: "#282c33",
-      color: "#dce0e5",
+      backgroundColor: "var(--onyx-background)",
+      color: "var(--onyx-text-primary)",
       height: "100%",
       fontFamily: '"Inter", system-ui, sans-serif',
     },
     "&.cm-focused": { outline: "none" },
     ".cm-scroller": { overflow: "auto" },
     ".cm-content": {
-      caretColor: "#74ade8",
+      caretColor: "var(--onyx-accent)",
       lineHeight: "1.8",
       maxWidth: "806px",
       width: "100%",
@@ -44,10 +44,12 @@ const onyxTheme = EditorView.theme(
       margin: "0 auto",
       fontFamily: '"Inter", system-ui, sans-serif',
     },
-    ".cm-cursor": { borderLeftColor: "#74ade8" },
-    ".cm-selectionBackground, ::selection": { backgroundColor: "#454a56" },
+    ".cm-cursor": { borderLeftColor: "var(--onyx-accent)" },
+    ".cm-selectionBackground, ::selection": {
+      backgroundColor: "var(--onyx-surface-active)",
+    },
     ".cm-activeLine": { backgroundColor: "transparent" },
-    ".cm-line": { color: "#dce0e5" },
+    ".cm-line": { color: "var(--onyx-text-primary)" },
   },
   { dark: true },
 );

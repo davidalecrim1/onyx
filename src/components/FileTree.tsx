@@ -42,9 +42,9 @@ function createGhost(label: string): HTMLDivElement {
     position: fixed;
     pointer-events: none;
     z-index: 9999;
-    background: var(--color-surface, #2a2a2a);
-    color: var(--color-text-primary, #e0e0e0);
-    border: 1px solid var(--color-accent, #74ade8);
+    background: var(--onyx-surface);
+    color: var(--onyx-text-primary);
+    border: 1px solid var(--onyx-accent);
     border-radius: 4px;
     padding: 2px 8px;
     font-size: 12px;

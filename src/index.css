@@ -80,7 +80,7 @@ body,
 .onyx-h6 {
   font-size: 0.9em;
   font-weight: 600;
-  color: #a9afbc;
+  color: var(--onyx-text-secondary);
 }
 
 .onyx-bold {
@@ -91,20 +91,20 @@ body,
 }
 .onyx-strike {
   text-decoration: line-through;
-  color: #a9afbc;
+  color: var(--onyx-text-secondary);
 }
 
 .onyx-link {
-  color: #74ade8;
+  color: var(--onyx-accent);
   text-decoration: underline;
 }
 
 .onyx-tag {
-  color: #74ade8;
+  color: var(--onyx-accent);
 }
 
 .onyx-code-inline {
-  background-color: #22262e;
+  background-color: var(--onyx-code-bg);
   border-radius: 3px;
   padding: 0 3px;
   font-family: "Zed Mono Extended", monospace;
@@ -112,7 +112,7 @@ body,
 }
 
 .cm-line.onyx-codeblock {
-  background-color: #22262e;
+  background-color: var(--onyx-code-bg);
   font-family: "Zed Mono Extended", monospace;
   font-size: 0.9em;
 }
@@ -125,7 +125,7 @@ body,
 .cm-line.onyx-hr-line::after {
   content: "";
   display: block;
-  border-top: 1px solid #454a56;
+  border-top: 1px solid var(--onyx-surface-active);
   position: absolute;
   left: 0;
   right: 0;
@@ -138,7 +138,7 @@ body,
 }
 
 .onyx-bullet {
-  color: #a9afbc;
+  color: var(--onyx-text-secondary);
   margin-right: 0.4em;
 }
 
@@ -151,7 +151,7 @@ body,
   margin-right: 0.5em;
   vertical-align: middle;
   cursor: pointer;
-  color: #454a56;
+  color: var(--onyx-surface-active);
   flex-shrink: 0;
   user-select: none;
   position: relative;
@@ -165,15 +165,15 @@ body,
 }
 
 .onyx-task-checkbox:hover {
-  color: #74ade8;
+  color: var(--onyx-accent);
 }
 
 .onyx-task-checkbox--checked {
-  color: #74ade8;
+  color: var(--onyx-accent);
 }
 
 .onyx-task-checkbox:focus-visible {
-  outline: 2px solid #74ade8;
+  outline: 2px solid var(--onyx-accent);
   outline-offset: 1px;
   border-radius: 3px;
 }
@@ -184,17 +184,17 @@ body,
   background: transparent;
   border: none;
   outline: none;
-  color: #dce0e5;
+  color: var(--onyx-text-primary);
   font-size: 2em;
   font-weight: 700;
   line-height: 1.2;
   margin-bottom: 0.5em;
   padding: 0;
-  caret-color: #74ade8;
+  caret-color: var(--onyx-accent);
 }
 
 .onyx-inline-title::placeholder {
-  color: #454a56;
+  color: var(--onyx-surface-active);
 }
 
 .onyx-table {
@@ -204,15 +204,15 @@ body,
 }
 .onyx-table th,
 .onyx-table td {
-  border: 1px solid #454a56;
+  border: 1px solid var(--onyx-surface-active);
   padding: 0.3em 0.6em;
 }
 .onyx-table thead {
-  background-color: #22262e;
+  background-color: var(--onyx-code-bg);
   font-weight: 600;
 }
 .onyx-table tbody tr:nth-child(even) {
-  background-color: #22262e;
+  background-color: var(--onyx-code-bg);
 }
 
 .onyx-callout {
@@ -230,22 +230,22 @@ body,
   gap: 0.4em;
 }
 .onyx-callout-note {
-  border-color: #74ade8;
+  border-color: var(--onyx-accent);
 }
 .onyx-callout-tip,
 .onyx-callout-hint {
-  border-color: #4db89a;
+  border-color: var(--onyx-success);
 }
 .onyx-callout-warning {
-  border-color: #e8c074;
+  border-color: var(--onyx-warning);
 }
 .onyx-callout-danger,
 .onyx-callout-error {
-  border-color: #e87474;
+  border-color: var(--onyx-danger);
 }
 .onyx-callout-quote,
 .onyx-callout-cite {
-  border-color: #a9afbc;
+  border-color: var(--onyx-text-secondary);
 }
 
 .onyx-image {
@@ -256,25 +256,25 @@ body,
 }
 .onyx-image-broken {
   padding: 0.5em;
-  color: #a9afbc;
+  color: var(--onyx-text-secondary);
   font-size: 0.85em;
-  border: 1px dashed #454a56;
+  border: 1px dashed var(--onyx-surface-active);
   border-radius: 4px;
 }
 
 .onyx-frontmatter-pill {
   display: inline-block;
   font-size: 0.75em;
-  color: #a9afbc;
-  background: #22262e;
-  border: 1px solid #454a56;
+  color: var(--onyx-text-secondary);
+  background: var(--onyx-code-bg);
+  border: 1px solid var(--onyx-surface-active);
   border-radius: 999px;
   padding: 0.1em 0.7em;
   cursor: pointer;
 }
 
 .onyx-reading-view {
-  color: #dce0e5;
+  color: var(--onyx-text-primary);
   font-size: 16px;
   line-height: 1.8;
   font-family: "Inter", system-ui, sans-serif;
@@ -308,7 +308,7 @@ body,
 .onyx-reading-view h6 {
   font-size: 0.9em;
   font-weight: 600;
-  color: #a9afbc;
+  color: var(--onyx-text-secondary);
   margin: 1em 0 0.4em;
 }
 
@@ -326,16 +326,16 @@ body,
 
 .onyx-reading-view del {
   text-decoration: line-through;
-  color: #a9afbc;
+  color: var(--onyx-text-secondary);
 }
 
 .onyx-reading-view a {
-  color: #74ade8;
+  color: var(--onyx-accent);
   text-decoration: underline;
 }
 
 .onyx-reading-view code {
-  background-color: #22262e;
+  background-color: var(--onyx-code-bg);
   border-radius: 3px;
   padding: 0 3px;
   font-family: "Zed Mono Extended", monospace;
@@ -343,7 +343,7 @@ body,
 }
 
 .onyx-reading-view pre {
-  background-color: #22262e;
+  background-color: var(--onyx-code-bg);
   border-radius: 4px;
   padding: 0.8em 1em;
   margin: 0.5em 0;
@@ -385,15 +385,15 @@ body,
 }
 
 .onyx-reading-view blockquote {
-  border-left: 4px solid #454a56;
+  border-left: 4px solid var(--onyx-surface-active);
   margin: 0.5em 0;
   padding: 0.3em 0.8em;
-  color: #a9afbc;
+  color: var(--onyx-text-secondary);
 }
 
 .onyx-reading-view hr {
   border: none;
-  border-top: 1px solid #454a56;
+  border-top: 1px solid var(--onyx-surface-active);
   margin: 0.5em 0;
 }
 
@@ -405,17 +405,17 @@ body,
 
 .onyx-reading-view th,
 .onyx-reading-view td {
-  border: 1px solid #454a56;
+  border: 1px solid var(--onyx-surface-active);
   padding: 0.3em 0.6em;
 }
 
 .onyx-reading-view thead {
-  background-color: #22262e;
+  background-color: var(--onyx-code-bg);
   font-weight: 600;
 }
 
 .onyx-reading-view tbody tr:nth-child(even) {
-  background-color: #22262e;
+  background-color: var(--onyx-code-bg);
 }
 
 .onyx-reading-view img {

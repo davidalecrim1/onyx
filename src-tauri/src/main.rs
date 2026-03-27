@@ -14,7 +14,7 @@ use std::sync::Mutex;
 
 use commands::{
     build_tag_index, create_file, create_folder, create_vault, delete_file, get_default_vault_dir,
-    get_file_tree, get_known_vaults, get_last_active_vault, get_settings, get_tags,
+    get_file_tree, get_known_vaults, get_last_active_vault, get_settings, get_tags, load_theme,
     load_vault_session_cmd, maximize_window, move_file, open_vault, open_vault_window,
     open_welcome_window, read_binary_as_data_url, read_file, rename_file, resolve_asset_path,
     resolve_wikilink, save_settings, save_vault_session_cmd, update_file_tags, write_file,
@@ -69,6 +69,7 @@ fn main() {
             open_vault_window,
             open_welcome_window,
             delete_file,
+            load_theme,
         ])
         .run(tauri::generate_context!())
         .expect("error running tauri app");

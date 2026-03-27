@@ -70,7 +70,7 @@ export default function ResizablePanel({
       {children}
       <div
         onPointerDown={handlePointerDown}
-        className={`absolute ${handleClass} z-10 transition-colors hover:bg-accent/40`}
+        className={`absolute ${handleClass} z-10 transition-colors hover:bg-surface-active`}
       />
     </div>
   );

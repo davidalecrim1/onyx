@@ -212,6 +212,47 @@ pub fn get_settings() -> Result<GlobalConfig, String> {
     load_global_config().map_err(|e| e.to_string())
 }
 
+/// Reads ~/.config/onyx/theme.json and returns its contents as a raw JSON string.
+/// Returns "{}" if the file does not exist, so the frontend falls back to the default palette.
+#[tauri::command]
+pub fn load_theme() -> Result<String, String> {
+    let config_dir =
+        dirs_next::config_dir().ok_or_else(|| "Cannot determine config directory".to_string())?;
+    read_theme_from_dir(&config_dir)
+}
+
+fn read_theme_from_dir(config_dir: &std::path::Path) -> Result<String, String> {
+    let path = config_dir.join("onyx").join("theme.json");
+    if !path.exists() {
+        return Ok("{}".to_string());
+    }
+    std::fs::read_to_string(&path).map_err(|e| e.to_string())
+}
+
+#[cfg(test)]
+mod theme_tests {
+    use super::read_theme_from_dir;
+    use std::fs;
+
+    #[test]
+    fn returns_empty_object_when_file_is_absent() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let result = read_theme_from_dir(dir.path()).unwrap();
+        assert_eq!(result, "{}");
+    }
+
+    #[test]
+    fn returns_raw_json_when_file_exists() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let onyx_dir = dir.path().join("onyx");
+        fs::create_dir_all(&onyx_dir).expect("create onyx dir");
+        let theme_path = onyx_dir.join("theme.json");
+        fs::write(&theme_path, r##"{"accent":"#ff0000"}"##).expect("write theme");
+        let result = read_theme_from_dir(dir.path()).unwrap();
+        assert_eq!(result, r##"{"accent":"#ff0000"}"##);
+    }
+}
+
 /// Persists a settings change without clobbering the vault list or other fields.
 #[tauri::command]
 pub fn save_settings(vim_mode: bool) -> Result<(), String> {

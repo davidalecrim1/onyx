@@ -93,55 +93,16 @@ class FrontmatterWidget extends WidgetType {
   }
 }
 
-const CALLOUT_TYPES: Record<
-  string,
-  { borderColor: string; icon: string; cssClass: string }
-> = {
-  note: {
-    borderColor: "#74ade8",
-    icon: "\u2139",
-    cssClass: "onyx-callout-note",
-  },
-  info: {
-    borderColor: "#74ade8",
-    icon: "\u2139",
-    cssClass: "onyx-callout-note",
-  },
-  tip: {
-    borderColor: "#4db89a",
-    icon: "\uD83D\uDCA1",
-    cssClass: "onyx-callout-tip",
-  },
-  hint: {
-    borderColor: "#4db89a",
-    icon: "\uD83D\uDCA1",
-    cssClass: "onyx-callout-hint",
-  },
-  warning: {
-    borderColor: "#e8c074",
-    icon: "\u26A0",
-    cssClass: "onyx-callout-warning",
-  },
-  danger: {
-    borderColor: "#e87474",
-    icon: "\u2715",
-    cssClass: "onyx-callout-danger",
-  },
-  error: {
-    borderColor: "#e87474",
-    icon: "\u2715",
-    cssClass: "onyx-callout-error",
-  },
-  quote: {
-    borderColor: "#a9afbc",
-    icon: "\u201C",
-    cssClass: "onyx-callout-quote",
-  },
-  cite: {
-    borderColor: "#a9afbc",
-    icon: "\u201C",
-    cssClass: "onyx-callout-cite",
-  },
+const CALLOUT_TYPES: Record<string, { icon: string; cssClass: string }> = {
+  note: { icon: "\u2139", cssClass: "onyx-callout-note" },
+  info: { icon: "\u2139", cssClass: "onyx-callout-note" },
+  tip: { icon: "\uD83D\uDCA1", cssClass: "onyx-callout-tip" },
+  hint: { icon: "\uD83D\uDCA1", cssClass: "onyx-callout-hint" },
+  warning: { icon: "\u26A0", cssClass: "onyx-callout-warning" },
+  danger: { icon: "\u2715", cssClass: "onyx-callout-danger" },
+  error: { icon: "\u2715", cssClass: "onyx-callout-error" },
+  quote: { icon: "\u201C", cssClass: "onyx-callout-quote" },
+  cite: { icon: "\u201C", cssClass: "onyx-callout-cite" },
 };
 
 const CALLOUT_RE = /^>\s*\[!([\w-]+)\]/i;
@@ -244,7 +205,6 @@ class CalloutWidget extends WidgetType {
   toDOM(): HTMLElement {
     const typeKey = this.calloutType.toLowerCase();
     const config = CALLOUT_TYPES[typeKey] ?? {
-      borderColor: "#a9afbc",
       icon: "\u2022",
       cssClass: "onyx-callout-unknown",
     };
