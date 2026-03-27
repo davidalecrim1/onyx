@@ -24,6 +24,13 @@ const DEFAULT_PANELS: Record<string, PanelConfig> = {
     minSize: 160,
     maxSize: 480,
   },
+  outline: {
+    isOpen: false,
+    width: 240,
+    height: 0,
+    minSize: 160,
+    maxSize: 400,
+  },
 };
 
 export const usePanelStore = create<PanelState>()(

@@ -10,11 +10,17 @@ const TRAFFIC_LIGHT_HEIGHT = 38;
 interface Props {
   sidebar: ReactNode;
   tabBar: ReactNode;
+  outlinePanel: ReactNode;
   children: ReactNode;
 }
 
 /// Top-level layout shell. Add future panels here by extending Props.
-export default function AppLayout({ sidebar, tabBar, children }: Props) {
+export default function AppLayout({
+  sidebar,
+  tabBar,
+  outlinePanel,
+  children,
+}: Props) {
   const sidebarOpen = usePanelStore(
     (state) => state.panels["fileTree"]?.isOpen ?? false,
   );
@@ -46,9 +52,24 @@ export default function AppLayout({ sidebar, tabBar, children }: Props) {
           <div className="flex min-w-0 flex-1 items-end overflow-hidden pt-2">
             {tabBar}
           </div>
+          <div className="flex items-center px-1">
+            <PanelToggleButton
+              panelId="outline"
+              tooltip={`Toggle outline (${getKeybindingLabel("view.toggleOutline") ?? "unbound"})`}
+            />
+          </div>
         </div>
 
-        {children}
+        <div className="flex flex-1 overflow-hidden">
+          <div className="flex-1 overflow-hidden">{children}</div>
+          <ResizablePanel
+            panelId="outline"
+            side="right"
+            className="flex flex-col border-l border-surface"
+          >
+            {outlinePanel}
+          </ResizablePanel>
+        </div>
       </div>
     </div>
   );

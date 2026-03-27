@@ -1,4 +1,12 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  forwardRef,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import CodeMirror, {
   EditorView,
   EditorSelection,
@@ -99,6 +107,10 @@ function EyeIcon() {
   );
 }
 
+export interface MarkdownEditorHandle {
+  jumpToPosition: (pos: number) => void;
+}
+
 interface Props {
   content: string;
   onChange: (value: string) => void;
@@ -110,295 +122,317 @@ interface Props {
   onWikilinkCreate: (linkTarget: string) => void;
 }
 
-export default function MarkdownEditor({
-  content,
-  onChange,
-  vimMode,
-  filePath,
-  onRename,
-  vaultPath,
-  onWikilinkOpen,
-  onWikilinkCreate,
-}: Props) {
-  const editorRef = useRef<ReactCodeMirrorRef>(null);
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [tags, setTags] = useState<string[]>([]);
-  const [isEditing, setIsEditing] = useState(true);
+const MarkdownEditor = forwardRef<MarkdownEditorHandle, Props>(
+  function MarkdownEditor(
+    {
+      content,
+      onChange,
+      vimMode,
+      filePath,
+      onRename,
+      vaultPath,
+      onWikilinkOpen,
+      onWikilinkCreate,
+    }: Props,
+    ref,
+  ) {
+    const editorRef = useRef<ReactCodeMirrorRef>(null);
 
-  // Load the current tag list whenever a vault becomes available.
-  useEffect(() => {
-    if (!vaultPath) return;
-    invoke<string[]>("get_tags", { vaultPath })
-      .then(setTags)
-      .catch(() => {});
-  }, [vaultPath]);
-
-  useEffect(() => {
-    const view = editorRef.current?.view;
-    if (!view || !vaultPath) return;
-    view.dispatch({
-      effects: setWikilinkConfig.of({
-        vaultPath,
-        onOpen: onWikilinkOpen,
-        onCreate: onWikilinkCreate,
-      }),
-    });
-  }, [vaultPath, onWikilinkOpen, onWikilinkCreate]);
-
-  useEffect(() => {
-    const view = editorRef.current?.view;
-    if (!view || !vaultPath || !filePath) return;
-    view.dispatch({
-      effects: setImageConfig.of({ vaultPath, filePath }),
-    });
-  }, [vaultPath, filePath]);
-
-  const fileStem = filePath
-    ? (filePath
-        .split("/")
-        .pop()
-        ?.replace(/\.[^.]+$/, "") ?? "")
-    : "";
-
-  const [titleValue, setTitleValue] = useState(fileStem);
-
-  useEffect(() => {
-    setTitleValue(fileStem);
-  }, [fileStem]);
-
-  useEffect(() => {
-    editorRef.current?.view?.focus();
-  }, [filePath]);
-
-  // Refocus editor when switching back to editing mode.
-  useEffect(() => {
-    if (isEditing) {
-      editorRef.current?.view?.focus();
-    }
-  }, [isEditing]);
-
-  // Cancel any pending debounce when the component unmounts.
-  useEffect(
-    () => () => {
-      if (debounceRef.current) clearTimeout(debounceRef.current);
-    },
-    [],
-  );
-
-  const handleChange = useCallback(
-    (value: string) => {
-      onChange(value);
-      if (!filePath) return;
-      if (debounceRef.current) clearTimeout(debounceRef.current);
-      debounceRef.current = setTimeout(() => {
-        invoke("update_file_tags", {
-          vaultPath,
-          filePath,
-          content: value,
-        }).catch(() => {});
-        invoke<string[]>("get_tags", { vaultPath })
-          .then(setTags)
-          .catch(() => {});
-      }, 800);
-    },
-    [onChange, filePath, vaultPath],
-  );
-
-  const extensions = useMemo(
-    () => [
-      ...(vimMode ? [vim()] : []),
-      markdown({ extensions: [TaskList, GFM, Strikethrough] }),
-      EditorView.lineWrapping,
-      onyxTheme,
-      markdownDecorations,
-      tagAutocomplete(tags),
-      wikilinkConfigField,
-      wikilinkViewPlugin,
-      imageConfigField,
-      ...imageDecorations,
-    ],
-    [vimMode, tags],
-  );
-
-  const commitRename = useCallback(() => {
-    const sanitized = sanitizeFileName(titleValue);
-    if (!sanitized || sanitized === fileStem) return;
-    onRename(sanitized);
-  }, [titleValue, fileStem, onRename]);
-
-  const handleReadingViewClick = useCallback(
-    (event: React.MouseEvent<HTMLDivElement>) => {
-      const target = event.target as HTMLElement;
-      if (!target.classList.contains("onyx-wikilink")) return;
-      const linkTarget = target.getAttribute("data-target");
-      if (!linkTarget || !vaultPath) return;
-      invoke<string | null>("resolve_wikilink", { vaultPath, linkTarget })
-        .then((resolvedPath) => {
-          if (resolvedPath !== null) {
-            onWikilinkOpen(resolvedPath);
-          } else {
-            onWikilinkCreate(linkTarget);
-          }
-        })
-        .catch((err) => console.error("resolve_wikilink failed:", err));
-    },
-    [vaultPath, onWikilinkOpen, onWikilinkCreate],
-  );
-
-  const renderedHtml = useMemo(() => {
-    const WIKILINK_RE = /\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g;
-    const withWikilinks = content.replace(
-      WIKILINK_RE,
-      (_, rawTarget: string, rawAlias: string | undefined) => {
-        const linkTarget = rawTarget.trim();
-        const display = rawAlias !== undefined ? rawAlias.trim() : linkTarget;
-        const safeTarget = linkTarget.replace(/"/g, "&quot;");
-        return `<span class="onyx-wikilink" data-target="${safeTarget}">${display}</span>`;
+    useImperativeHandle(ref, () => ({
+      jumpToPosition(pos: number) {
+        const view = editorRef.current?.view;
+        if (!view) return;
+        view.dispatch({
+          selection: EditorSelection.cursor(pos),
+          scrollIntoView: true,
+        });
+        view.focus();
       },
+    }));
+
+    const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const [tags, setTags] = useState<string[]>([]);
+    const [isEditing, setIsEditing] = useState(true);
+
+    // Load the current tag list whenever a vault becomes available.
+    useEffect(() => {
+      if (!vaultPath) return;
+      invoke<string[]>("get_tags", { vaultPath })
+        .then(setTags)
+        .catch(() => {});
+    }, [vaultPath]);
+
+    useEffect(() => {
+      const view = editorRef.current?.view;
+      if (!view || !vaultPath) return;
+      view.dispatch({
+        effects: setWikilinkConfig.of({
+          vaultPath,
+          onOpen: onWikilinkOpen,
+          onCreate: onWikilinkCreate,
+        }),
+      });
+    }, [vaultPath, onWikilinkOpen, onWikilinkCreate]);
+
+    useEffect(() => {
+      const view = editorRef.current?.view;
+      if (!view || !vaultPath || !filePath) return;
+      view.dispatch({
+        effects: setImageConfig.of({ vaultPath, filePath }),
+      });
+    }, [vaultPath, filePath]);
+
+    const fileStem = filePath
+      ? (filePath
+          .split("/")
+          .pop()
+          ?.replace(/\.[^.]+$/, "") ?? "")
+      : "";
+
+    const handleReadingViewClick = useCallback(
+      (event: React.MouseEvent<HTMLDivElement>) => {
+        const target = event.target as HTMLElement;
+        if (!target.classList.contains("onyx-wikilink")) return;
+        const linkTarget = target.getAttribute("data-target");
+        if (!linkTarget || !vaultPath) return;
+        invoke<string | null>("resolve_wikilink", { vaultPath, linkTarget })
+          .then((resolvedPath) => {
+            if (resolvedPath !== null) {
+              onWikilinkOpen(resolvedPath);
+            } else {
+              onWikilinkCreate(linkTarget);
+            }
+          })
+          .catch((err) => console.error("resolve_wikilink failed:", err));
+      },
+      [vaultPath, onWikilinkOpen, onWikilinkCreate],
     );
 
-    // Consecutive tag-only lines collapse into one <p> in standard markdown.
-    // Insert a blank line between them so each renders as its own paragraph.
-    const TAG_LINE_RE = /^(#[a-zA-Z][a-zA-Z0-9_-]*\s*)+$/;
-    const preprocessed = withWikilinks
-      .split("\n")
-      .reduce<string[]>((acc, line, index, lines) => {
-        acc.push(line);
-        const nextLine = lines[index + 1];
-        if (
-          nextLine !== undefined &&
-          TAG_LINE_RE.test(line.trim()) &&
-          TAG_LINE_RE.test(nextLine.trim())
-        ) {
-          acc.push("");
-        }
-        return acc;
-      }, [])
-      .join("\n");
+    const [titleValue, setTitleValue] = useState(fileStem);
 
-    const raw = marked.parse(preprocessed, { async: false }) as string;
-    // Wrap #tag tokens in a styled span after sanitization-safe HTML is built.
-    const withTags = raw.replace(
-      /(?<=^|[\s>])#([a-zA-Z][a-zA-Z0-9_-]*)/g,
-      '<span class="onyx-tag">#$1</span>',
+    useEffect(() => {
+      setTitleValue(fileStem);
+    }, [fileStem]);
+
+    useEffect(() => {
+      editorRef.current?.view?.focus();
+    }, [filePath]);
+
+    // Refocus editor when switching back to editing mode.
+    useEffect(() => {
+      if (isEditing) {
+        editorRef.current?.view?.focus();
+      }
+    }, [isEditing]);
+
+    // Cancel any pending debounce when the component unmounts.
+    useEffect(
+      () => () => {
+        if (debounceRef.current) clearTimeout(debounceRef.current);
+      },
+      [],
     );
-    return DOMPurify.sanitize(withTags, {
-      ADD_ATTR: ["class", "data-target"],
-    });
-  }, [content]);
 
-  const headerContent = filePath && (
-    <div className="flex justify-center bg-background shrink-0">
-      <div className="w-full max-w-[806px] px-8 pt-6">
-        {vaultPath &&
-          (() => {
-            const normalizedVault = vaultPath.endsWith("/")
-              ? vaultPath
-              : vaultPath + "/";
-            const relative = filePath.startsWith(normalizedVault)
-              ? filePath.slice(normalizedVault.length)
-              : filePath;
-            const segments = relative.split("/");
-            const fileName = segments[segments.length - 1];
-            return (
-              <div className="relative mb-4 text-center text-sm text-text-secondary">
-                {segments.length > 1 ? (
-                  segments.map((segment, index) => (
-                    <span key={index}>
-                      {index > 0 && <span className="mx-1 opacity-50">/</span>}
-                      {index === segments.length - 1 ? (
-                        <span className="text-text-primary">{segment}</span>
-                      ) : (
-                        segment
-                      )}
-                    </span>
-                  ))
-                ) : (
-                  <span className="text-text-primary">{fileName}</span>
-                )}
-                <button
-                  onClick={() => setIsEditing((prev) => !prev)}
-                  className="absolute right-0 top-1/2 -translate-y-1/2 text-text-secondary hover:text-text-primary transition-colors"
-                  title={
-                    isEditing
-                      ? "Switch to reading mode"
-                      : "Switch to editing mode"
-                  }
-                >
-                  {isEditing ? <EyeIcon /> : <PencilIcon />}
-                </button>
-              </div>
-            );
-          })()}
-        {isEditing ? (
-          <input
-            value={titleValue}
-            onChange={(e) => setTitleValue(e.target.value)}
-            onBlur={commitRename}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                e.preventDefault();
-                commitRename();
-                editorRef.current?.view?.focus();
-              }
-              if (e.key === "Escape") {
-                setTitleValue(fileStem);
-              }
-              if (e.key === "ArrowDown") {
-                e.preventDefault();
-                const view = editorRef.current?.view;
-                if (view) {
-                  view.dispatch({
-                    selection: EditorSelection.cursor(0),
-                    scrollIntoView: true,
-                  });
-                  view.focus();
+    const handleChange = useCallback(
+      (value: string) => {
+        onChange(value);
+        if (!filePath) return;
+        if (debounceRef.current) clearTimeout(debounceRef.current);
+        debounceRef.current = setTimeout(() => {
+          invoke("update_file_tags", {
+            vaultPath,
+            filePath,
+            content: value,
+          }).catch(() => {});
+          invoke<string[]>("get_tags", { vaultPath })
+            .then(setTags)
+            .catch(() => {});
+        }, 800);
+      },
+      [onChange, filePath, vaultPath],
+    );
+
+    const extensions = useMemo(
+      () => [
+        ...(vimMode ? [vim()] : []),
+        markdown({ extensions: [TaskList, GFM, Strikethrough] }),
+        EditorView.lineWrapping,
+        onyxTheme,
+        markdownDecorations,
+        tagAutocomplete(tags),
+        wikilinkConfigField,
+        wikilinkViewPlugin,
+        imageConfigField,
+        ...imageDecorations,
+      ],
+      [vimMode, tags],
+    );
+
+    const commitRename = useCallback(() => {
+      const sanitized = sanitizeFileName(titleValue);
+      if (!sanitized || sanitized === fileStem) return;
+      onRename(sanitized);
+    }, [titleValue, fileStem, onRename]);
+
+    const renderedHtml = useMemo(() => {
+      const WIKILINK_RE = /\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g;
+      const withWikilinks = content.replace(
+        WIKILINK_RE,
+        (_, rawTarget: string, rawAlias: string | undefined) => {
+          const linkTarget = rawTarget.trim();
+          const display = rawAlias !== undefined ? rawAlias.trim() : linkTarget;
+          const safeTarget = linkTarget.replace(/"/g, "&quot;");
+          return `<span class="onyx-wikilink" data-target="${safeTarget}">${display}</span>`;
+        },
+      );
+
+      // Consecutive tag-only lines collapse into one <p> in standard markdown.
+      // Insert a blank line between them so each renders as its own paragraph.
+      const TAG_LINE_RE = /^(#[a-zA-Z][a-zA-Z0-9_-]*\s*)+$/;
+      const preprocessed = withWikilinks
+        .split("\n")
+        .reduce<string[]>((acc, line, index, lines) => {
+          acc.push(line);
+          const nextLine = lines[index + 1];
+          if (
+            nextLine !== undefined &&
+            TAG_LINE_RE.test(line.trim()) &&
+            TAG_LINE_RE.test(nextLine.trim())
+          ) {
+            acc.push("");
+          }
+          return acc;
+        }, [])
+        .join("\n");
+
+      const raw = marked.parse(preprocessed, { async: false }) as string;
+      // Wrap #tag tokens in a styled span after sanitization-safe HTML is built.
+      const withTags = raw.replace(
+        /(?<=^|[\s>])#([a-zA-Z][a-zA-Z0-9_-]*)/g,
+        '<span class="onyx-tag">#$1</span>',
+      );
+      return DOMPurify.sanitize(withTags, {
+        ADD_ATTR: ["class", "data-target"],
+      });
+    }, [content]);
+
+    const headerContent = filePath && (
+      <div className="flex justify-center bg-background shrink-0">
+        <div className="w-full max-w-[806px] px-8 pt-6">
+          {vaultPath &&
+            (() => {
+              const normalizedVault = vaultPath.endsWith("/")
+                ? vaultPath
+                : vaultPath + "/";
+              const relative = filePath.startsWith(normalizedVault)
+                ? filePath.slice(normalizedVault.length)
+                : filePath;
+              const segments = relative.split("/");
+              const fileName = segments[segments.length - 1];
+              return (
+                <div className="relative mb-4 text-center text-sm text-text-secondary">
+                  {segments.length > 1 ? (
+                    segments.map((segment, index) => (
+                      <span key={index}>
+                        {index > 0 && (
+                          <span className="mx-1 opacity-50">/</span>
+                        )}
+                        {index === segments.length - 1 ? (
+                          <span className="text-text-primary">{segment}</span>
+                        ) : (
+                          segment
+                        )}
+                      </span>
+                    ))
+                  ) : (
+                    <span className="text-text-primary">{fileName}</span>
+                  )}
+                  <button
+                    onClick={() => setIsEditing((prev) => !prev)}
+                    className="absolute right-0 top-1/2 -translate-y-1/2 text-text-secondary hover:text-text-primary transition-colors"
+                    title={
+                      isEditing
+                        ? "Switch to reading mode"
+                        : "Switch to editing mode"
+                    }
+                  >
+                    {isEditing ? <EyeIcon /> : <PencilIcon />}
+                  </button>
+                </div>
+              );
+            })()}
+          {isEditing ? (
+            <input
+              value={titleValue}
+              onChange={(e) => setTitleValue(e.target.value)}
+              onBlur={commitRename}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  commitRename();
+                  editorRef.current?.view?.focus();
                 }
-              }
+                if (e.key === "Escape") {
+                  setTitleValue(fileStem);
+                }
+                if (e.key === "ArrowDown") {
+                  e.preventDefault();
+                  const view = editorRef.current?.view;
+                  if (view) {
+                    view.dispatch({
+                      selection: EditorSelection.cursor(0),
+                      scrollIntoView: true,
+                    });
+                    view.focus();
+                  }
+                }
+              }}
+              className="onyx-inline-title"
+              spellCheck={false}
+              aria-label="File name"
+            />
+          ) : (
+            <h1 className="onyx-inline-title">{titleValue}</h1>
+          )}
+        </div>
+      </div>
+    );
+
+    return (
+      <div className="flex flex-col h-full bg-background">
+        {headerContent}
+        {isEditing ? (
+          <CodeMirror
+            ref={editorRef}
+            value={content}
+            onChange={handleChange}
+            extensions={extensions}
+            theme="none"
+            height="100%"
+            className="flex-1 min-h-0"
+            basicSetup={{
+              lineNumbers: false,
+              foldGutter: false,
+              highlightActiveLine: false,
+              highlightSelectionMatches: true,
+              syntaxHighlighting: false,
             }}
-            className="onyx-inline-title"
-            spellCheck={false}
-            aria-label="File name"
+            style={{ fontSize: "14px" }}
           />
         ) : (
-          <h1 className="onyx-inline-title">{titleValue}</h1>
+          <div className="flex justify-center overflow-y-auto flex-1">
+            <div className="w-full max-w-[806px] px-8 py-6">
+              <div
+                className="onyx-reading-view"
+                dangerouslySetInnerHTML={{ __html: renderedHtml }}
+                onClick={handleReadingViewClick}
+              />
+            </div>
+          </div>
         )}
       </div>
-    </div>
-  );
+    );
+  },
+);
 
-  return (
-    <div className="flex flex-col h-full bg-background">
-      {headerContent}
-      {isEditing ? (
-        <CodeMirror
-          ref={editorRef}
-          value={content}
-          onChange={handleChange}
-          extensions={extensions}
-          theme="none"
-          height="100%"
-          className="flex-1 min-h-0"
-          basicSetup={{
-            lineNumbers: false,
-            foldGutter: false,
-            highlightActiveLine: false,
-            highlightSelectionMatches: true,
-            syntaxHighlighting: false,
-          }}
-          style={{ fontSize: "14px" }}
-        />
-      ) : (
-        <div className="flex justify-center overflow-y-auto flex-1">
-          <div className="w-full max-w-[806px] px-8 py-6">
-            <div
-              className="onyx-reading-view"
-              dangerouslySetInnerHTML={{ __html: renderedHtml }}
-              onClick={handleReadingViewClick}
-            />
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
+export default MarkdownEditor;
