@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import FileTree, { type FileTreeEntry } from "../components/FileTree";
+import FileTree, {
+  type FileTreeEntry,
+  type FileTreeHandle,
+} from "../components/FileTree";
 import TabBar, { type Tab } from "../components/TabBar";
 import MarkdownEditor from "../components/MarkdownEditor";
 import ImageViewer from "../components/ImageViewer";
@@ -211,6 +214,7 @@ export default function EditorPage({
   const [fileSortOrder, setFileSortOrder] = useState<FileSortOrder>("name-asc");
   const [sortMenuOpen, setSortMenuOpen] = useState(false);
   const sortButtonRef = useRef<HTMLButtonElement>(null);
+  const fileTreeRef = useRef<FileTreeHandle>(null);
   const [state, dispatch] = useReducer(editorReducer, {
     tabs: [],
     activeTabPath: null,
@@ -426,6 +430,39 @@ export default function EditorPage({
     [fetchFileTree],
   );
 
+  const handleFileTreeRename = useCallback(
+    async (oldPath: string, newStem: string) => {
+      try {
+        const newPath = await invoke<string>("rename_file", {
+          oldPath,
+          newStem,
+        });
+        const newName = newPath.split("/").pop() ?? newPath;
+        dispatch({ type: "rename_file", oldPath, newPath, newName });
+        fetchFileTree();
+      } catch (err) {
+        console.error("Failed to rename file:", err);
+      }
+    },
+    [fetchFileTree],
+  );
+
+  const handleFileTreeCreateFile = useCallback(
+    (contextDir: string) => {
+      setSelectedFolderPath(contextDir);
+      handleNewNoteOpen();
+    },
+    [handleNewNoteOpen],
+  );
+
+  const handleFileTreeCreateFolder = useCallback(
+    (contextDir: string) => {
+      setSelectedFolderPath(contextDir);
+      handleNewFolderOpen();
+    },
+    [handleNewFolderOpen],
+  );
+
   const handleContentChange = useCallback(
     (content: string) => {
       if (!state.activeTabPath) return;
@@ -509,7 +546,16 @@ export default function EditorPage({
       label: "Toggle Sidebar",
       execute: () => usePanelStore.getState().togglePanel("fileTree"),
     });
-    return () => unregister("view.toggleSidebar");
+    register({
+      id: "view.focusFileTree",
+      label: "Focus File Tree",
+      keywords: ["sidebar", "explorer", "files"],
+      execute: () => fileTreeRef.current?.focus(),
+    });
+    return () => {
+      unregister("view.toggleSidebar");
+      unregister("view.focusFileTree");
+    };
   }, [register, unregister]);
 
   useEffect(() => {
@@ -681,6 +727,7 @@ export default function EditorPage({
           </div>
         ) : (
           <FileTree
+            ref={fileTreeRef}
             entries={sortFileTree(fileTree, fileSortOrder)}
             activeFilePath={state.activeTabPath}
             vaultPath={vaultPath}
@@ -688,6 +735,9 @@ export default function EditorPage({
             onFolderClick={handleFolderClick}
             onFileDrop={handleFileDrop}
             onDelete={handleFileDelete}
+            onCreateFile={handleFileTreeCreateFile}
+            onCreateFolder={handleFileTreeCreateFolder}
+            onRenameFile={handleFileTreeRename}
           />
         )}
       </div>
