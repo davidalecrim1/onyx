@@ -1,5 +1,9 @@
 [package]
 name = "onyx"
+
+[[bin]]
+name = "Onyx"
+path = "src/main.rs"
 version = "0.1.0"
 edition = "2021"
 

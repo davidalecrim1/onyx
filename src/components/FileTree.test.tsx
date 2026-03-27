@@ -76,11 +76,9 @@ describe("FileTree — .md extension stripping", () => {
   });
 
   it("strips .md from files inside nested directories", () => {
-    const nested = makeDir(
-      "docs",
-      "/vault/docs",
-      [makeFile("guide.md", "/vault/docs/guide.md", 1)],
-    );
+    const nested = makeDir("docs", "/vault/docs", [
+      makeFile("guide.md", "/vault/docs/guide.md", 1),
+    ]);
     render(<FileTree {...DEFAULT_PROPS} entries={[nested]} />);
     expect(screen.getByText("guide")).toBeInTheDocument();
     expect(screen.queryByText("guide.md")).not.toBeInTheDocument();

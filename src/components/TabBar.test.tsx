@@ -131,18 +131,18 @@ describe("TabBar behavior", () => {
 
   it("dirty indicator is shown for dirty paths", () => {
     renderTabBar({ dirtyPaths: new Set(["/b.md"]) });
-    const closeWrapper = screen
-      .getByRole("button", { name: "Close Beta.md" })
-      .parentElement!;
+    const closeWrapper = screen.getByRole("button", {
+      name: "Close Beta.md",
+    }).parentElement!;
     const dot = closeWrapper.querySelector("span");
     expect(dot).toBeInTheDocument();
   });
 
   it("dirty indicator is absent for clean paths", () => {
     renderTabBar({ dirtyPaths: new Set() });
-    const closeWrapper = screen
-      .getByRole("button", { name: "Close Alpha.md" })
-      .parentElement!;
+    const closeWrapper = screen.getByRole("button", {
+      name: "Close Alpha.md",
+    }).parentElement!;
     const dot = closeWrapper.querySelector("span");
     expect(dot).not.toBeInTheDocument();
   });

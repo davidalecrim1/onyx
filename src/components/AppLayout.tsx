@@ -43,7 +43,9 @@ export default function AppLayout({ sidebar, tabBar, children }: Props) {
               tooltip={`Toggle sidebar (${getKeybindingLabel("view.toggleSidebar") ?? "unbound"})`}
             />
           </div>
-          <div className="flex min-w-0 flex-1 items-end overflow-hidden pt-2">{tabBar}</div>
+          <div className="flex min-w-0 flex-1 items-end overflow-hidden pt-2">
+            {tabBar}
+          </div>
         </div>
 
         {children}

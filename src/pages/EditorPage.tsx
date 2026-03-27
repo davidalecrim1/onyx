@@ -289,7 +289,13 @@ export default function EditorPage({
       activeTab: state.activeTabPath,
       sortOrder: fileSortOrder,
     }).catch((err) => console.error("Failed to save session:", err));
-  }, [vaultPath, sessionLoaded, state.tabs, state.activeTabPath, fileSortOrder]);
+  }, [
+    vaultPath,
+    sessionLoaded,
+    state.tabs,
+    state.activeTabPath,
+    fileSortOrder,
+  ]);
 
   const handleNewNoteOpen = useCallback(() => {
     setNewNoteName("Untitled");
@@ -715,16 +721,16 @@ export default function EditorPage({
             ) : state.activeTabPath && isImagePath(state.activeTabPath) ? (
               <ImageViewer filePath={state.activeTabPath} />
             ) : (
-            <MarkdownEditor
-              content={activeContent}
-              onChange={handleContentChange}
-              vimMode={vimMode}
-              filePath={state.activeTabPath}
-              onRename={handleRename}
-              vaultPath={vaultPath}
-              onWikilinkOpen={handleFileClick}
-              onWikilinkCreate={handleWikilinkCreate}
-            />
+              <MarkdownEditor
+                content={activeContent}
+                onChange={handleContentChange}
+                vimMode={vimMode}
+                filePath={state.activeTabPath}
+                onRename={handleRename}
+                vaultPath={vaultPath}
+                onWikilinkOpen={handleFileClick}
+                onWikilinkCreate={handleWikilinkCreate}
+              />
             )
           ) : (
             <div className="flex h-full items-center justify-center text-text-secondary">
