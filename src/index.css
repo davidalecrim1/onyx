@@ -334,6 +334,12 @@ body,
   text-decoration: underline;
 }
 
+.onyx-reading-view .onyx-wikilink {
+  color: #74ade8;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
 .onyx-reading-view code {
   background-color: var(--onyx-code-bg);
   border-radius: 3px;

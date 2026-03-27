@@ -226,11 +226,41 @@ export default function MarkdownEditor({
     onRename(sanitized);
   }, [titleValue, fileStem, onRename]);
 
+  const handleReadingViewClick = useCallback(
+    (event: React.MouseEvent<HTMLDivElement>) => {
+      const target = event.target as HTMLElement;
+      if (!target.classList.contains("onyx-wikilink")) return;
+      const linkTarget = target.getAttribute("data-target");
+      if (!linkTarget || !vaultPath) return;
+      invoke<string | null>("resolve_wikilink", { vaultPath, linkTarget })
+        .then((resolvedPath) => {
+          if (resolvedPath !== null) {
+            onWikilinkOpen(resolvedPath);
+          } else {
+            onWikilinkCreate(linkTarget);
+          }
+        })
+        .catch((err) => console.error("resolve_wikilink failed:", err));
+    },
+    [vaultPath, onWikilinkOpen, onWikilinkCreate],
+  );
+
   const renderedHtml = useMemo(() => {
+    const WIKILINK_RE = /\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g;
+    const withWikilinks = content.replace(
+      WIKILINK_RE,
+      (_, rawTarget: string, rawAlias: string | undefined) => {
+        const linkTarget = rawTarget.trim();
+        const display = rawAlias !== undefined ? rawAlias.trim() : linkTarget;
+        const safeTarget = linkTarget.replace(/"/g, "&quot;");
+        return `<span class="onyx-wikilink" data-target="${safeTarget}">${display}</span>`;
+      },
+    );
+
     // Consecutive tag-only lines collapse into one <p> in standard markdown.
     // Insert a blank line between them so each renders as its own paragraph.
     const TAG_LINE_RE = /^(#[a-zA-Z][a-zA-Z0-9_-]*\s*)+$/;
-    const preprocessed = content
+    const preprocessed = withWikilinks
       .split("\n")
       .reduce<string[]>((acc, line, index, lines) => {
         acc.push(line);
@@ -253,7 +283,7 @@ export default function MarkdownEditor({
       '<span class="onyx-tag">#$1</span>',
     );
     return DOMPurify.sanitize(withTags, {
-      ADD_ATTR: ["class"],
+      ADD_ATTR: ["class", "data-target"],
     });
   }, [content]);
 
@@ -364,6 +394,7 @@ export default function MarkdownEditor({
             <div
               className="onyx-reading-view"
               dangerouslySetInnerHTML={{ __html: renderedHtml }}
+              onClick={handleReadingViewClick}
             />
           </div>
         </div>
