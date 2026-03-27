@@ -5,7 +5,12 @@ import FileTree, {
   type FileTreeHandle,
 } from "../components/FileTree";
 import TabBar, { type Tab } from "../components/TabBar";
-import MarkdownEditor from "../components/MarkdownEditor";
+import MarkdownEditor, {
+  type MarkdownEditorHandle,
+} from "../components/MarkdownEditor";
+import HeadingPanel, {
+  type HeadingPanelHandle,
+} from "../components/HeadingPanel";
 import ImageViewer from "../components/ImageViewer";
 import PdfViewer from "../components/PdfViewer";
 import VaultSwitcher from "../components/VaultSwitcher";
@@ -215,6 +220,8 @@ export default function EditorPage({
   const [sortMenuOpen, setSortMenuOpen] = useState(false);
   const sortButtonRef = useRef<HTMLButtonElement>(null);
   const fileTreeRef = useRef<FileTreeHandle>(null);
+  const editorHandleRef = useRef<MarkdownEditorHandle>(null);
+  const outlinePanelRef = useRef<HeadingPanelHandle>(null);
   const [state, dispatch] = useReducer(editorReducer, {
     tabs: [],
     activeTabPath: null,
@@ -552,9 +559,23 @@ export default function EditorPage({
       keywords: ["sidebar", "explorer", "files"],
       execute: () => fileTreeRef.current?.focus(),
     });
+    register({
+      id: "view.toggleOutline",
+      label: "Toggle Outline",
+      keywords: ["heading", "toc", "outline", "navigation"],
+      execute: () => {
+        const store = usePanelStore.getState();
+        const isCurrentlyOpen = store.panels["outline"]?.isOpen ?? false;
+        store.togglePanel("outline");
+        if (!isCurrentlyOpen) {
+          setTimeout(() => outlinePanelRef.current?.focus(), 0);
+        }
+      },
+    });
     return () => {
       unregister("view.toggleSidebar");
       unregister("view.focusFileTree");
+      unregister("view.toggleOutline");
     };
   }, [register, unregister]);
 
@@ -761,9 +782,17 @@ export default function EditorPage({
     />
   );
 
+  const outlinePanel = (
+    <HeadingPanel
+      ref={outlinePanelRef}
+      content={activeContent}
+      onJump={(pos) => editorHandleRef.current?.jumpToPosition(pos)}
+    />
+  );
+
   return (
     <>
-      <AppLayout sidebar={sidebar} tabBar={tabBar}>
+      <AppLayout sidebar={sidebar} tabBar={tabBar} outlinePanel={outlinePanel}>
         <div className="flex-1 overflow-hidden">
           {activeContent !== null ? (
             state.activeTabPath && isPdf(state.activeTabPath) ? (
@@ -772,6 +801,7 @@ export default function EditorPage({
               <ImageViewer filePath={state.activeTabPath} />
             ) : (
               <MarkdownEditor
+                ref={editorHandleRef}
                 content={activeContent}
                 onChange={handleContentChange}
                 vimMode={vimMode}
