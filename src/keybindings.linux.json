@@ -4,5 +4,6 @@
   { "command": "tab.close", "key": "Ctrl+W" },
   { "command": "tab.closeAll", "key": "Ctrl+R Ctrl+W" },
   { "command": "view.palette", "key": "Ctrl+Shift+P" },
-  { "command": "file.open", "key": "Ctrl+O" }
+  { "command": "file.open", "key": "Ctrl+O" },
+  { "command": "view.focusFileTree", "key": "Ctrl+Shift+E" }
 ]
