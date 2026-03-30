@@ -868,12 +868,16 @@ function SortMenu({ current, onSelect, onClose }: SortMenuProps) {
   return (
     <div
       ref={menuRef}
-      className="absolute right-0 top-full z-50 mt-1 min-w-[240px] rounded border border-surface bg-surface-hover py-1 shadow-lg"
+      className="absolute left-0 top-full z-50 mt-1 min-w-[240px] rounded border border-surface bg-surface-hover py-1 shadow-lg"
     >
       {SORT_OPTIONS.map(({ order, label }) => (
         <button
           key={order}
-          className="flex w-full items-center gap-2 whitespace-nowrap px-3 py-1.5 text-left text-sm text-text-secondary hover:bg-surface-active hover:text-text-primary"
+          className={`flex w-full items-center gap-2 whitespace-nowrap px-3 py-1.5 text-left text-sm hover:bg-surface-active hover:text-text-primary ${
+            current === order
+              ? "bg-surface-active text-text-primary"
+              : "text-text-secondary"
+          }`}
           onClick={() => onSelect(order)}
         >
           <span className="w-3 shrink-0 text-accent">
