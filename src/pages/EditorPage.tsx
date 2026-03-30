@@ -625,14 +625,13 @@ export default function EditorPage({
 
   const sidebar = (
     <>
-      <div className="flex items-center justify-between border-b border-surface px-3 py-2 pt-[38px]">
-        <span
-          data-tauri-drag-region
-          className="flex-1 truncate text-sm font-medium text-text-primary"
-        >
-          {vaultName}
-        </span>
-        <div className="relative ml-2 flex shrink-0 items-center gap-1">
+      <div
+        data-tauri-drag-region
+        className="shrink-0 border-b border-surface"
+        style={{ height: 46 }}
+      />
+      <div className="flex shrink-0 items-center justify-center px-3 py-1.5">
+        <div className="relative flex items-center gap-1">
           <button
             ref={sortButtonRef}
             onClick={() => setSortMenuOpen((prev) => !prev)}
@@ -640,8 +639,8 @@ export default function EditorPage({
             aria-label="Sort files"
           >
             <svg
-              width="14"
-              height="14"
+              width="16"
+              height="16"
               viewBox="0 0 14 14"
               fill="none"
               xmlns="http://www.w3.org/2000/svg"
@@ -657,7 +656,7 @@ export default function EditorPage({
           </button>
           <button
             onClick={handleNewNoteOpen}
-            className="rounded px-1 text-text-secondary transition-colors hover:text-text-primary"
+            className="rounded px-1 text-base text-text-secondary transition-colors hover:text-text-primary"
             aria-label="New note"
           >
             +
@@ -668,8 +667,8 @@ export default function EditorPage({
             aria-label="New folder"
           >
             <svg
-              width="14"
-              height="14"
+              width="16"
+              height="16"
               viewBox="0 0 14 14"
               fill="none"
               xmlns="http://www.w3.org/2000/svg"
@@ -685,7 +684,7 @@ export default function EditorPage({
           </button>
           <button
             onClick={onClose}
-            className="rounded px-1 text-text-secondary transition-colors hover:text-text-primary"
+            className="rounded px-1 text-base text-text-secondary transition-colors hover:text-text-primary"
             aria-label="Close vault"
           >
             ×
