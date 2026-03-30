@@ -33,11 +33,20 @@ function parseBinding(raw: string): Omit<ParsedBinding, "command"> {
   };
 }
 
+/// Resolves the logical key name from a KeyboardEvent, ignoring OS-level character remapping.
+/// On macOS, Option combinations produce special characters (e.g. Option+B → "∫") in event.key.
+/// Using event.code ("KeyB" → "b") gives the physical key regardless of modifier state.
+export function resolveKey(event: Pick<KeyboardEvent, "code" | "key">): string {
+  if (event.code.startsWith("Key")) return event.code.slice(3).toLowerCase();
+  if (event.code.startsWith("Digit")) return event.code.slice(5).toLowerCase();
+  return event.key.toLowerCase();
+}
+
 function matchesBinding(
   event: KeyboardEvent,
   binding: Omit<ParsedBinding, "command">,
 ): boolean {
-  if (event.key.toLowerCase() !== binding.key) return false;
+  if (resolveKey(event) !== binding.key) return false;
   if (binding.cmd !== event.metaKey) return false;
   if (binding.ctrl !== event.ctrlKey) return false;
   if (binding.shift !== event.shiftKey) return false;
