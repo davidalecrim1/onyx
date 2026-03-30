@@ -75,6 +75,13 @@ export const usePanelStore = create<PanelState>()(
     {
       name: "onyx-panels",
       partialize: (state) => ({ panels: state.panels }),
+      merge: (persisted, current) => {
+        const persistedState = persisted as Partial<PanelState>;
+        return {
+          ...current,
+          panels: { ...DEFAULT_PANELS, ...(persistedState.panels ?? {}) },
+        };
+      },
     },
   ),
 );
