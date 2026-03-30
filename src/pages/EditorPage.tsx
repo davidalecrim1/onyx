@@ -792,7 +792,7 @@ export default function EditorPage({
   return (
     <>
       <AppLayout sidebar={sidebar} tabBar={tabBar} outlinePanel={outlinePanel}>
-        <div className="flex-1 overflow-hidden">
+        <div className="flex-1 min-h-0 h-full overflow-hidden">
           {activeContent !== null ? (
             state.activeTabPath && isPdf(state.activeTabPath) ? (
               <PdfViewer filePath={state.activeTabPath} />

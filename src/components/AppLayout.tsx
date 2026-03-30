@@ -61,7 +61,7 @@ export default function AppLayout({
         </div>
 
         <div className="flex flex-1 min-h-0 overflow-hidden">
-          <div className="flex-1 overflow-hidden">{children}</div>
+          <div className="flex-1 min-h-0 overflow-hidden">{children}</div>
           <ResizablePanel
             panelId="outline"
             side="right"

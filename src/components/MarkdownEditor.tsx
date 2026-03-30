@@ -36,11 +36,11 @@ const onyxTheme = EditorView.theme(
     "&": {
       backgroundColor: "var(--onyx-background)",
       color: "var(--onyx-text-primary)",
-      height: "100%",
+      height: "auto",
       fontFamily: '"Inter", system-ui, sans-serif',
     },
     "&.cm-focused": { outline: "none" },
-    ".cm-scroller": { overflow: "auto" },
+    ".cm-scroller": { overflow: "visible" },
     ".cm-content": {
       caretColor: "var(--onyx-accent)",
       lineHeight: "1.8",
@@ -399,7 +399,7 @@ const MarkdownEditor = forwardRef<MarkdownEditorHandle, Props>(
     );
 
     return (
-      <div className="flex flex-col h-full bg-background">
+      <div className="h-full overflow-y-auto bg-background">
         {headerContent}
         {isEditing ? (
           <CodeMirror
@@ -408,8 +408,8 @@ const MarkdownEditor = forwardRef<MarkdownEditorHandle, Props>(
             onChange={handleChange}
             extensions={extensions}
             theme="none"
-            height="100%"
-            className="flex-1 min-h-0"
+            height="auto"
+            className="min-h-full"
             basicSetup={{
               lineNumbers: false,
               foldGutter: false,
@@ -420,7 +420,7 @@ const MarkdownEditor = forwardRef<MarkdownEditorHandle, Props>(
             style={{ fontSize: "14px" }}
           />
         ) : (
-          <div className="flex justify-center overflow-y-auto flex-1">
+          <div className="flex justify-center">
             <div className="w-full max-w-[806px] px-8 py-6">
               <div
                 className="onyx-reading-view"

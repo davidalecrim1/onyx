@@ -9,7 +9,13 @@ vi.mock("@tauri-apps/api/core", () => ({
 }));
 
 vi.mock("@uiw/react-codemirror", () => ({
-  default: vi.fn(() => <div data-testid="codemirror" />),
+  default: vi.fn((props) => (
+    <div
+      data-testid="codemirror"
+      data-height={props.height}
+      className={props.className}
+    />
+  )),
   EditorView: { theme: vi.fn(() => ({})), lineWrapping: {} },
   EditorSelection: { cursor: vi.fn() },
 }));
@@ -135,5 +141,45 @@ describe("MarkdownEditor reading mode — wikilinks", () => {
     await waitFor(() => {
       expect(onWikilinkCreate).toHaveBeenCalledWith("new note");
     });
+  });
+});
+
+// These tests pin the scroll architecture. The outer div must own scrolling so
+// that the title/header scrolls with the content. If these fail, trackpad
+// scrolling or the fixed-header regression will reappear.
+describe("MarkdownEditor — scroll layout", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(invoke).mockResolvedValue([]);
+  });
+
+  it("root container has overflow-y-auto so it owns the scroll region", () => {
+    const { container } = render(<MarkdownEditor {...DEFAULT_PROPS} />);
+    const root = container.firstElementChild as HTMLElement;
+    expect(root.className).toContain("overflow-y-auto");
+  });
+
+  it("root container has h-full so the scroll region fills the parent", () => {
+    const { container } = render(<MarkdownEditor {...DEFAULT_PROPS} />);
+    const root = container.firstElementChild as HTMLElement;
+    expect(root.className).toContain("h-full");
+  });
+
+  it("header is a sibling of CodeMirror inside the scroll container so it scrolls with content", () => {
+    const { container } = render(
+      <MarkdownEditor {...DEFAULT_PROPS} filePath="/vault/note.md" />,
+    );
+    const root = container.firstElementChild as HTMLElement;
+    const codemirror = root.querySelector("[data-testid='codemirror']");
+    const header = root.querySelector(".onyx-inline-title");
+    // both must be descendants of the same scroll root, not siblings of it
+    expect(root).toContainElement(codemirror as HTMLElement);
+    expect(root).toContainElement(header as HTMLElement);
+  });
+
+  it("CodeMirror receives height='auto' so it does not create an inner scroll region", () => {
+    render(<MarkdownEditor {...DEFAULT_PROPS} />);
+    const codemirror = screen.getByTestId("codemirror");
+    expect(codemirror).toHaveAttribute("data-height", "auto");
   });
 });
